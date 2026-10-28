@@ -1,0 +1,176 @@
+"use client";
+
+import { Command } from "cmdk";
+import {
+  ArrowRight,
+  CreditCard,
+  Download,
+  FileText,
+  Lock,
+  Plus,
+  Send,
+  Sparkles,
+  UserPlus,
+  type LucideIcon,
+} from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useLayoutEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { Kbd } from "@/components/ui/misc";
+import { useToast } from "@/components/ui/toast";
+import { useStore } from "@/lib/store";
+import { nav, scopeOf } from "./nav";
+
+type Entry = { label: string; icon: LucideIcon; run: () => void; hint?: string; keywords?: string[] };
+
+export function CommandMenu() {
+  const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
+  const scope = scopeOf(pathname);
+  const toast = useToast();
+  const { state, dispatch } = useStore();
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setOpen((o) => !o);
+      }
+    };
+    const onOpen = () => setOpen(true);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("open-command-menu", onOpen);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("open-command-menu", onOpen);
+    };
+  }, []);
+
+  useLayoutEffect(() => () => setOpen(false), []);
+
+  const go = (href: string) => () => {
+    setOpen(false);
+    router.push(href);
+  };
+
+  const actions: Entry[] =
+    scope === "personal"
+      ? [
+          { label: "New payment", icon: Send, run: go("/personal/payments?new=1"), keywords: ["pay", "transfer", "send"] },
+          {
+            label: "Freeze Visa Debit ••4821",
+            icon: Lock,
+            keywords: ["block", "lost", "card"],
+            run: () => {
+              setOpen(false);
+              const card = state.personal.cards.find((c) => c.id === "pc-debit");
+              dispatch({ type: "personal/card", id: "pc-debit", patch: { frozen: !card?.frozen } });
+              toast({ title: card?.frozen ? "Card unfrozen" : "Card frozen", description: "Visa Debit ••4821 · takes effect instantly" });
+            },
+          },
+          { label: "Create virtual card", icon: CreditCard, run: go("/personal/cards"), keywords: ["disposable", "online"] },
+          { label: "Download statement", icon: Download, run: go("/personal/transactions"), keywords: ["pdf", "export"] },
+          { label: "Start a company", icon: Sparkles, run: go("/start"), keywords: ["oü", "register", "business"] },
+        ]
+      : [
+          { label: "New payment", icon: Send, run: go("/business/payments?new=1"), keywords: ["pay", "transfer", "invoice"] },
+          { label: "Review approvals", icon: FileText, run: go("/business/payments"), keywords: ["sign", "approve"] },
+          { label: "Invite people", icon: UserPlus, run: go("/business/team?invite=1"), keywords: ["member", "accountant", "add"] },
+          { label: "Issue a card", icon: Plus, run: go("/business/cards"), keywords: ["employee", "virtual"] },
+          {
+            label: "Export activity log (CSV)",
+            icon: Download,
+            run: () => {
+              setOpen(false);
+              dispatch({ type: "biz/log", action: "export.created", target: "Activity log", detail: "CSV · last 30 days" });
+              toast({ title: "Export ready", description: "activity-log-2026-10.csv · logged in Activity" });
+            },
+          },
+        ];
+
+  const pages: Entry[] = [
+    ...nav[scope].map((n) => ({ label: n.label, icon: n.icon, run: go(n.href), hint: scope === "personal" ? "Personal" : "Business" })),
+    ...nav[scope === "personal" ? "business" : "personal"].map((n) => ({
+      label: n.label,
+      icon: n.icon,
+      run: go(n.href),
+      hint: scope === "personal" ? "Business" : "Personal",
+    })),
+  ];
+
+  if (!open) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[55] flex items-start justify-center p-4 pt-[12vh]">
+      <div className="absolute inset-0 animate-fade-in bg-ink/25 backdrop-blur-[1px]" onClick={() => setOpen(false)} />
+      <Command
+        label="Command menu"
+        loop
+        onKeyDown={(e) => {
+          if (e.key === "Escape") setOpen(false);
+        }}
+        className="relative w-full max-w-[600px] animate-pop-in overflow-hidden rounded-xl bg-surface shadow-modal"
+      >
+        <div className="flex items-center gap-3 border-b border-line px-4">
+          <SearchGlyph />
+          <Command.Input
+            autoFocus
+            placeholder="Search pages and actions…"
+            className="h-13 w-full bg-transparent text-[15px] text-ink outline-none placeholder:text-ink-4"
+          />
+          <Kbd>Esc</Kbd>
+        </div>
+        <Command.List className="max-h-[min(420px,60vh)] overflow-y-auto p-2 [&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1.5 [&_[cmdk-group-heading]]:text-[12px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-ink-4">
+          <Command.Empty className="py-10 text-center text-sm text-ink-3">No results. Try “card” or “invite”.</Command.Empty>
+          <Command.Group heading="Actions">
+            {actions.map((a) => (
+              <Item key={a.label} entry={a} />
+            ))}
+          </Command.Group>
+          <Command.Group heading="Go to">
+            {pages.map((p) => (
+              <Item key={p.hint + p.label} entry={p} value={`${p.hint} ${p.label}`} />
+            ))}
+          </Command.Group>
+        </Command.List>
+        <div className="flex items-center justify-between border-t border-line bg-canvas px-4 py-2 text-[12px] text-ink-3">
+          <span className="flex items-center gap-1.5">
+            <Kbd>↑</Kbd>
+            <Kbd>↓</Kbd> to navigate
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Kbd>↵</Kbd> to select
+          </span>
+        </div>
+      </Command>
+    </div>,
+    document.body,
+  );
+}
+
+function Item({ entry, value }: { entry: Entry; value?: string }) {
+  const Icon = entry.icon;
+  return (
+    <Command.Item
+      value={value ?? entry.label}
+      keywords={entry.keywords}
+      onSelect={entry.run}
+      className="group flex h-10 cursor-pointer items-center gap-3 rounded-md px-2.5 text-sm text-ink-2 data-[selected=true]:bg-subtle data-[selected=true]:text-ink"
+    >
+      <Icon className="size-4 text-ink-3 group-data-[selected=true]:text-brand" />
+      <span className="flex-1">{entry.label}</span>
+      {entry.hint && <span className="text-[12px] text-ink-4">{entry.hint}</span>}
+      <ArrowRight className="size-3.5 text-ink-4 opacity-0 group-data-[selected=true]:opacity-100" />
+    </Command.Item>
+  );
+}
+
+function SearchGlyph() {
+  return (
+    <svg viewBox="0 0 16 16" className="size-4 shrink-0 text-ink-3" aria-hidden>
+      <circle cx="7" cy="7" r="4.75" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}

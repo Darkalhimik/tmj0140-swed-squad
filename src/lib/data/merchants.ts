@@ -1,0 +1,70 @@
+import type { Category } from "@/lib/types";
+
+/** Visual identity for counterparties: a tinted tile with a short mark. */
+export type MerchantStyle = { bg: string; fg: string; mark: string };
+
+const merchants: Record<string, MerchantStyle> = {
+  Rimi: { bg: "#e5243b", fg: "#fff", mark: "R" },
+  Selver: { bg: "#d9262a", fg: "#fff", mark: "S" },
+  Prisma: { bg: "#0b4ea2", fg: "#fff", mark: "P" },
+  "Lidl Eesti": { bg: "#0050aa", fg: "#ffe500", mark: "L" },
+  Bolt: { bg: "#34d186", fg: "#0b1f14", mark: "B" },
+  "Bolt Food": { bg: "#34d186", fg: "#0b1f14", mark: "B" },
+  Wolt: { bg: "#00c2e8", fg: "#fff", mark: "W" },
+  "Telia Eesti AS": { bg: "#990ae3", fg: "#fff", mark: "T" },
+  "Elisa Eesti AS": { bg: "#00287a", fg: "#fff", mark: "E" },
+  "Eesti Energia AS": { bg: "#ff6a13", fg: "#fff", mark: "EE" },
+  "Circle K": { bg: "#ee2e24", fg: "#fff", mark: "K" },
+  "Apollo Kino": { bg: "#1a1a1a", fg: "#ffcc00", mark: "A" },
+  Spotify: { bg: "#1ed760", fg: "#000", mark: "S" },
+  Netflix: { bg: "#000", fg: "#e50914", mark: "N" },
+  "Tallinna Vesi": { bg: "#0090d0", fg: "#fff", mark: "TV" },
+  Elron: { bg: "#f7a600", fg: "#1a1a1a", mark: "E" },
+  "Pirita Kohvik": { bg: "#efe2d2", fg: "#6e4b2a", mark: "PK" },
+  "Kalamaja Pagar": { bg: "#f3e6d6", fg: "#6e4b2a", mark: "KP" },
+  "Apotheka": { bg: "#00845a", fg: "#fff", mark: "A" },
+  "Zara": { bg: "#111", fg: "#fff", mark: "Z" },
+  "Kaubamaja": { bg: "#2b2b2b", fg: "#fff", mark: "K" },
+  "Swedbank": { bg: "var(--color-brand)", fg: "#fff", mark: "S" },
+  "Nordlight Studio OÜ": { bg: "#1e2a3a", fg: "#f6d58b", mark: "N" },
+  "Figma": { bg: "#1e1e1e", fg: "#fff", mark: "F" },
+  "Google Workspace": { bg: "#fff", fg: "#4285f4", mark: "G" },
+  "Amazon Web Services": { bg: "#232f3e", fg: "#ff9900", mark: "aws" },
+  "Zone Media OÜ": { bg: "#0f3d5e", fg: "#fff", mark: "Z" },
+  "Telliskivi Loomelinnak OÜ": { bg: "#e9e0d5", fg: "#3b2f2f", mark: "TL" },
+  "Klick Eesti AS": { bg: "#e30613", fg: "#fff", mark: "K" },
+  "Maksu- ja Tolliamet": { bg: "#0072ce", fg: "#fff", mark: "MTA" },
+  "Arvestus OÜ": { bg: "#e6dcf7", fg: "#5a3aa8", mark: "A" },
+  "Eva Kuusk": { bg: "#fbe3e3", fg: "#a33a36", mark: "EK" },
+  "Baltic Craft Coffee": { bg: "#3b2a20", fg: "#e9c79a", mark: "BC" },
+  "Tallink": { bg: "#003a70", fg: "#fff", mark: "T" },
+  "airBaltic": { bg: "#c4d600", fg: "#1a1a1a", mark: "aB" },
+  "Kuusk & Partners": { bg: "#e2efd9", fg: "#3b6f22", mark: "KP" },
+  "Merit Tarkvara AS": { bg: "#ff5b35", fg: "#fff", mark: "M" },
+  "Arcticwave Ltd": { bg: "#123b55", fg: "#bfe6ff", mark: "AW" },
+  "Hepta Group OÜ": { bg: "#f1ecfb", fg: "#5a3aa8", mark: "H" },
+};
+
+export function merchantStyle(name: string): MerchantStyle {
+  return merchants[name] ?? { bg: "var(--color-muted)", fg: "var(--color-ink-2)", mark: name.slice(0, 1).toUpperCase() };
+}
+
+export const categoryMeta: Record<Category, { label: string; color: string }> = {
+  groceries: { label: "Groceries", color: "#2f9e5b" },
+  "eating-out": { label: "Eating out", color: "#ee7023" },
+  transport: { label: "Transport", color: "#31a3ae" },
+  bills: { label: "Bills & utilities", color: "#6d4bc4" },
+  shopping: { label: "Shopping", color: "#d9488f" },
+  entertainment: { label: "Entertainment", color: "#fdc129" },
+  health: { label: "Health", color: "#1f6fb8" },
+  income: { label: "Income", color: "#1f8a4c" },
+  transfers: { label: "Transfers", color: "#8a7a70" },
+  savings: { label: "Savings", color: "#512b2b" },
+  fees: { label: "Bank fees", color: "#a89a90" },
+  software: { label: "Software & SaaS", color: "#6d4bc4" },
+  office: { label: "Office & rent", color: "#8a5a3c" },
+  salaries: { label: "Salaries", color: "#512b2b" },
+  taxes: { label: "Taxes", color: "#1f6fb8" },
+  travel: { label: "Travel", color: "#31a3ae" },
+  services: { label: "Services", color: "#ee7023" },
+};
