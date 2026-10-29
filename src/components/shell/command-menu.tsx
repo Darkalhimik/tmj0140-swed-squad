@@ -18,6 +18,7 @@ import { useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Kbd } from "@/components/ui/misc";
 import { useToast } from "@/components/ui/toast";
+import { downloadCsv } from "@/lib/export/download";
 import { useStore } from "@/lib/store";
 import { nav, scopeOf } from "./nav";
 
@@ -83,8 +84,13 @@ export function CommandMenu() {
             icon: Download,
             run: () => {
               setOpen(false);
-              dispatch({ type: "biz/log", action: "export.created", target: "Activity log", detail: "CSV · last 30 days" });
-              toast({ title: "Export ready", description: "activity-log-2026-10.csv · logged in Activity" });
+              const nameOf = (id: string) => (id === "system" ? "Swedbank" : (state.business.members.find((m) => m.id === id)?.name ?? id));
+              downloadCsv("activity-log-2026-10-29.csv", [
+                ["time", "actor", "action", "target", "detail", "device", "ip"],
+                ...state.business.audit.map((e) => [e.at, nameOf(e.actor), e.action, e.target, e.detail ?? "", e.device, e.ip]),
+              ]);
+              dispatch({ type: "biz/log", action: "export.created", target: "Activity log", detail: `CSV · ${state.business.audit.length} rows` });
+              toast({ title: "Export ready", description: "activity-log-2026-10-29.csv · the export itself is now in the log" });
             },
           },
         ];

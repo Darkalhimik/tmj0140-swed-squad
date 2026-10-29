@@ -64,6 +64,3 @@ export function requestId(e: AuditEvent) {
   return `req_${(h >>> 0).toString(36).padStart(7, "0")}${e.id.replace("a-", "")}`;
 }
 
-export function toCsvRow(e: AuditEvent, actor: string) {
-  return [e.at, actor, e.action, e.target, e.detail ?? "", e.device, e.ip].map((v) => `"${v.replaceAll('"', '""')}"`).join(",");
-}

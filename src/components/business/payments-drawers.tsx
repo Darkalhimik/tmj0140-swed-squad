@@ -18,6 +18,7 @@ import { merchantStyle } from "@/lib/data/merchants";
 import { cn } from "@/lib/cn";
 import { fmtDate, fmtDateTime, iban as fmtIban, money, NOW } from "@/lib/format";
 import { CURRENT_MEMBER, useStore } from "@/lib/store";
+import { downloadBizPaymentConfirmation, downloadInvoice } from "@/lib/export/documents";
 import type { BizPayment } from "@/lib/types";
 import {
   arrivalText,
@@ -91,7 +92,10 @@ export function PaymentDrawer({
           <Button
             variant="secondary"
             leading={<Download className="size-4" />}
-            onClick={() => toast({ title: "Confirmation downloaded", description: `${p.id.toLowerCase()}-confirmation.pdf · signed by Swedbank` })}
+            onClick={async () => {
+              const file = await downloadBizPaymentConfirmation(p, (id) => state.business.members.find((m) => m.id === id)?.name ?? id);
+              toast({ title: "Confirmation downloaded", description: file });
+            }}
           >
             Download confirmation
           </Button>
@@ -158,10 +162,16 @@ export function PaymentDrawer({
               </KeyValue>
               {p.attachment && (
                 <KeyValue label="Invoice">
-                  <span className="inline-flex items-center gap-1 text-teal">
+                  <button
+                    onClick={async () => {
+                      const file = await downloadInvoice(p);
+                      toast({ title: "Invoice downloaded", description: file });
+                    }}
+                    className="inline-flex items-center gap-1 text-teal hover:underline"
+                  >
                     <Paperclip className="size-3.5" />
                     {p.attachment}
-                  </span>
+                  </button>
                 </KeyValue>
               )}
               {p.bulk && <KeyValue label="Recipients">{p.bulk} people · salary file</KeyValue>}

@@ -15,6 +15,7 @@ import { useToast } from "@/components/ui/toast";
 import { roleMeta } from "@/lib/data/business";
 import { registryLookup, STATE_FEE } from "@/lib/data/formation";
 import { cn } from "@/lib/cn";
+import { accountAgreementPdf, foundingDocumentsPdf } from "@/lib/export/pdf";
 import { iban as fmtIban, money, NOW } from "@/lib/format";
 import { useStore, type Formation } from "@/lib/store";
 import type { Card } from "@/lib/types";
@@ -291,7 +292,29 @@ export function Tracker() {
                 className="mt-2 w-full"
                 variant="secondary"
                 leading={<Download className="size-4" />}
-                onClick={() => toast({ title: "Documents downloaded", description: isNew ? "Articles of association and registry card (PDF)" : "Account agreement (PDF)" })}
+                onClick={async () => {
+                  const slug = name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+                  const filename = isNew ? `${slug}-founding-documents.pdf` : `${slug}-account-agreement.pdf`;
+                  if (isNew) {
+                    await foundingDocumentsPdf({
+                      filename,
+                      name,
+                      registryCode: NEW_CODE,
+                      appRef: APP_REF,
+                      address: f.addressLine,
+                      activity: f.emtak ? `${f.emtak.code} — ${f.emtak.label}` : "—",
+                      capital: f.capital,
+                      founders: f.founders.map((p) => ({ name: p.name, idCode: p.idCode, share: p.share, board: p.board })),
+                      representation:
+                        f.representation === "alone" ? "Each board member may represent the company alone" : "Board members represent the company jointly",
+                      iban: NEW_IBAN,
+                      vat: f.vat,
+                    });
+                  } else {
+                    await accountAgreementPdf({ filename, company: name, registryCode: f.existingCode, iban: NEW_IBAN, signer: "Mari Tamm" });
+                  }
+                  toast({ title: "Documents downloaded", description: filename });
+                }}
               >
                 {isNew ? "Download founding documents" : "Download agreement"}
               </Button>

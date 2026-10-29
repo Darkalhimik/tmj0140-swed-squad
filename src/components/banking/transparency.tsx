@@ -10,9 +10,11 @@ import { Tooltip } from "@/components/ui/misc";
 import { Modal } from "@/components/ui/overlay";
 import { Segmented } from "@/components/ui/tabs";
 import { cn } from "@/lib/cn";
+import { useToast } from "@/components/ui/toast";
 import { money, NOW, fmtDate } from "@/lib/format";
 import type { Allowance, Plan } from "@/lib/data/pricing";
-import type { Account } from "@/lib/types";
+import { exportStatement, PERIODS, type StatementFormat, type StatementPeriod } from "@/lib/export/statements";
+import type { Account, Txn } from "@/lib/types";
 
 export type FeeRow = { label: ReactNode; value: ReactNode; hint?: ReactNode; tone?: "muted" | "success" };
 
@@ -177,28 +179,51 @@ export function PlanCompare({
   );
 }
 
-type Format = "pdf" | "csv" | "camt" | "merit";
+type Format = StatementFormat;
 
-/** Statement export: account, period, format — and what's included. */
+/** Statement export: account, period, format — generated and downloaded in the browser. */
 export function StatementExportModal({
   open,
   onClose,
   accounts,
+  txns,
+  holder,
   onExport,
   business,
 }: {
   open: boolean;
   onClose: () => void;
   accounts: Account[];
-  onExport: (summary: { file: string; account: string; period: string }) => void;
+  txns: Txn[];
+  holder: { name: string; id: string };
+  onExport: (summary: { file: string; account: string; period: string; format: Format }) => void;
   business?: boolean;
 }) {
+  const toast = useToast();
   const [account, setAccount] = useState(accounts[0]?.id ?? "");
-  const [period, setPeriod] = useState<"month" | "last" | "quarter" | "year">("month");
+  const [period, setPeriod] = useState<StatementPeriod>("month");
   const [format, setFormat] = useState<Format>("pdf");
-  const periods = { month: "October 2026", last: "September 2026", quarter: "Q3 2026", year: "2026 to date" };
-  const ext = format === "pdf" ? "pdf" : format === "csv" ? "csv" : "xml";
+  const [busy, setBusy] = useState(false);
   const acc = accounts.find((a) => a.id === account);
+
+  const run = async () => {
+    if (!acc) return;
+    if (format === "merit") {
+      onExport({ file: "Merit Aktiva", account: acc.name, period: PERIODS[period].label, format });
+      onClose();
+      return;
+    }
+    setBusy(true);
+    try {
+      const file = await exportStatement({ account: acc, txns, period, format, holder });
+      onExport({ file, account: acc.name, period: PERIODS[period].label, format });
+      onClose();
+    } catch {
+      toast({ tone: "danger", title: "Couldn't create the statement", description: "Try again." });
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <Modal
@@ -212,19 +237,8 @@ export function StatementExportModal({
           <Button variant="tertiary" onClick={onClose}>
             Cancel
           </Button>
-          <Button
-            variant="primary"
-            leading={<Download className="size-4" />}
-            onClick={() => {
-              onExport({
-                file: `statement-${periods[period].toLowerCase().replaceAll(" ", "-")}.${ext}`,
-                account: acc?.name ?? "",
-                period: periods[period],
-              });
-              onClose();
-            }}
-          >
-            Download
+          <Button variant="primary" loading={busy} leading={<Download className="size-4" />} onClick={run}>
+            {format === "merit" ? "Send to Merit" : "Download"}
           </Button>
         </>
       }

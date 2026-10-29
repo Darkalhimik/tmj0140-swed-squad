@@ -61,6 +61,12 @@ export function PersonalOverview() {
   const recent = txns.filter((t) => t.accountId === "p-main").slice(0, 9);
   const days = groupBy(recent, (t) => dayLabel(t.at));
   const parts = moneyParts(account.balance);
+  const october = txns.filter(
+    (t) => t.accountId === "p-main" && t.status !== "declined" && t.status !== "refunded" && t.at.startsWith("2026-10"),
+  );
+  const monthIn = october.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+  const monthOut = october.filter((t) => t.amount < 0).reduce((s, t) => s + t.amount, 0);
+  const upcomingTotal = upcoming.reduce((s, u) => s + u.amount, 0);
 
   return (
     <PageContainer>
@@ -131,8 +137,25 @@ export function PersonalOverview() {
               </div>
             </div>
 
+            {account.kind === "current" && (
+              <dl className="mt-6 grid grid-cols-3 gap-4 border-t border-line pt-4">
+                {[
+                  { label: "In · October", value: monthIn, cls: "text-success", sign: true },
+                  { label: "Out · October", value: monthOut, cls: "text-ink" },
+                  { label: "Coming up · 30 days", value: upcomingTotal, cls: "text-ink-2" },
+                ].map((s) => (
+                  <div key={s.label} className="min-w-0">
+                    <dt className="truncate text-[12px] text-ink-3">{s.label}</dt>
+                    <dd className={cn("tabular mt-0.5 text-[15px] font-semibold tracking-[-0.01em]", s.cls)}>
+                      {hidden ? "••••" : money(s.value, { sign: s.sign })}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+
             {/* Account pills */}
-            <div className="scrollbar-none -mx-1 mt-8 flex gap-1.5 overflow-x-auto px-1 pb-1">
+            <div className="mt-5 flex flex-wrap gap-1.5">
               {accounts.map((a) => (
                 <button
                   key={a.id}

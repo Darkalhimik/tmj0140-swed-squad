@@ -301,9 +301,16 @@ export function BusinessOverview() {
         open={modal === "statement"}
         onClose={() => setModal(null)}
         accounts={accounts}
-        onExport={({ file, account, period }) => {
-          dispatch({ type: "biz/log", action: "statement.downloaded", target: account, detail: `${period} · ${file.split(".").pop()?.toUpperCase()}` });
-          toast({ title: "Statement downloaded", description: file });
+        txns={state.business.txns}
+        holder={{ name: company.name, id: company.registryCode }}
+        onExport={({ file, account, period, format }) => {
+          const label = format === "merit" ? "sent to Merit Aktiva" : format === "camt" ? "camt.053" : format.toUpperCase();
+          dispatch({ type: "biz/log", action: "statement.downloaded", target: account, detail: `${period} · ${label}` });
+          toast(
+            format === "merit"
+              ? { title: "Statement sent", description: `${account} · ${period} → Merit Aktiva` }
+              : { title: "Statement downloaded", description: file },
+          );
         }}
       />
       <TxnDrawer txn={openTxn} onClose={() => setOpenTxn(null)} cards={cards} member={memberName(openTxn?.memberId)} />

@@ -13,8 +13,9 @@ import { EmptyState, Tooltip } from "@/components/ui/misc";
 import { StatusDot } from "@/components/ui/status-dot";
 import { Tabs } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
-import { company, roleMeta } from "@/lib/data/business";
-import { fmtDate, fmtDateTime, NOW, relative } from "@/lib/format";
+import { company, companyLimits, roleMeta } from "@/lib/data/business";
+import { agreementPdf } from "@/lib/export/pdf";
+import { fmtDate, fmtDateTime, money, NOW, relative } from "@/lib/format";
 import { useStore } from "@/lib/store";
 
 type Tab = "members" | "invitations" | "roles";
@@ -199,9 +200,42 @@ function AgreementCard() {
         size="sm"
         variant="secondary"
         leading={<Download className="size-3.5" />}
-        onClick={() => toast({ title: "Agreement downloaded", description: `digital-services-agreement-v${version}.asice` })}
+        onClick={async () => {
+          const filename = `digital-services-agreement-v${version}.pdf`;
+          const { members, rules } = state.business;
+          const eur = (n: number) => money(n).replace(".00", "");
+          await agreementPdf({
+            filename,
+            company: company.name,
+            registryCode: company.registryCode,
+            version,
+            signedAt: signedNow ? NOW.toISOString() : "2026-10-16T13:00:00+03:00",
+            signedBy: "Mari Tamm",
+            users: members.map((m) => ({
+              name: m.name,
+              profile: `${roleMeta[m.role].label} — ${roleMeta[m.role].rights}`,
+              signing: m.board ? "Board member, represents alone" : m.role === "accountant" ? "Prepares payments" : "No signing rights",
+              limit: m.approvalLimit === null ? "No limit" : m.approvalLimit === 0 ? "—" : eur(m.approvalLimit),
+              auth: m.auth,
+            })),
+            limits: [
+              ["Payments per day", eur(companyLimits.daily.max)],
+              ["Payments per month", eur(companyLimits.monthly.max)],
+              ["Instant payments per day", eur(companyLimits.instantDaily.max)],
+              ["Instant, per payment", eur(companyLimits.instantPerPayment)],
+              ["Second approval from", eur(companyLimits.secondApprovalFrom)],
+              ["Sign-in allowed from", companyLimits.loginCountries.join(", ")],
+            ],
+            rules: rules.map((r) => ({
+              name: r.name,
+              range: r.max === null ? `From ${eur(r.min)}` : `${eur(r.min)} – ${eur(r.max)}`,
+              approvers: `${r.approvers} · ${r.who}`,
+            })),
+          });
+          toast({ title: "Agreement downloaded", description: filename });
+        }}
       >
-        Download (ASiC-E)
+        Download PDF
       </Button>
     </div>
   );

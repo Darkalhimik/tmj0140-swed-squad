@@ -26,6 +26,8 @@ import { Modal } from "@/components/ui/overlay";
 import { useToast } from "@/components/ui/toast";
 import { consents as seedConsents, devices as seedDevices, person } from "@/lib/data/personal";
 import { cn } from "@/lib/cn";
+import { downloadText } from "@/lib/export/download";
+import { useStore } from "@/lib/store";
 import { fmtDate, money, NOW, relative } from "@/lib/format";
 
 type Channel = "app" | "push" | "email";
@@ -54,6 +56,7 @@ type Signing = { action: string; details: { label: string; value: ReactNode }[];
 
 export function Security() {
   const toast = useToast();
+  const { state } = useStore();
   const [devices, setDevices] = useState(seedDevices);
   const [consents, setConsents] = useState(seedConsents);
   const [prefs, setPrefs] = useState(PREFS);
@@ -276,7 +279,22 @@ export function Security() {
               size="sm"
               variant="secondary"
               leading={<Download className="size-4" />}
-              onClick={() => toast({ title: "Data export requested", description: "Ready within 24 hours · we'll notify you in the app" })}
+              onClick={() => {
+                const filename = `my-data-${person.idCode.slice(-4)}-2026-10-29.json`;
+                const data = {
+                  _notice: "SPECIMEN — student concept by SWED SQUAD (TMJ0140/TMJ0130). Not a Swedbank document. All data is fictional.",
+                  exportedAt: NOW.toISOString(),
+                  format: "GDPR Art. 15 & 20 data export (machine-readable)",
+                  person,
+                  accounts: state.personal.accounts.map(({ id, name, kind, iban, balance }) => ({ id, name, kind, iban, balance })),
+                  cards: state.personal.cards.map((c) => ({ name: c.name, last4: c.last4, kind: c.kind, frozen: c.frozen, settings: c.settings, limits: c.limits })),
+                  transactions: state.personal.txns,
+                  thirdPartyAccess: seedConsents,
+                  devices: seedDevices,
+                };
+                downloadText(filename, JSON.stringify(data, null, 2), "application/json");
+                toast({ title: "Data downloaded", description: `${filename} · everything we hold, machine-readable` });
+              }}
             >
               Download my data
             </Button>

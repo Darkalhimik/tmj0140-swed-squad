@@ -19,6 +19,7 @@ import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/cn";
 import { fmtDate, fmtDateTime, iban as fmtIban, money, relative } from "@/lib/format";
 import { CURRENT_MEMBER, useStore } from "@/lib/store";
+import { downloadInvoice } from "@/lib/export/documents";
 import type { BizPayment } from "@/lib/types";
 
 type Tab = "approval" | "scheduled" | "history" | "rules";
@@ -200,6 +201,7 @@ function ApprovalCard({
   onAsk: () => void;
 }) {
   const { state } = useStore();
+  const toast = useToast();
   const { members, rules } = state.business;
   const rule = rules.find((r) => r.id === p.ruleId);
   const creator = members.find((m) => m.id === p.createdBy);
@@ -237,9 +239,18 @@ function ApprovalCard({
 
       <div className="flex flex-wrap items-center gap-1.5 px-5 pt-3 pl-[74px]">
         {p.attachment && (
-          <Badge tone="gray" icon={<Paperclip className="size-3" />}>
-            {p.attachment}
-          </Badge>
+          <button
+            onClick={async () => {
+              const file = await downloadInvoice(p);
+              toast({ title: "Invoice downloaded", description: file });
+            }}
+            className="rounded-full transition-opacity hover:opacity-80"
+            title="Download invoice"
+          >
+            <Badge tone="gray" icon={<Paperclip className="size-3" />}>
+              {p.attachment}
+            </Badge>
+          </button>
         )}
         {p.newBeneficiary && (
           <Badge tone="warning" icon={<TriangleAlert className="size-3" />}>

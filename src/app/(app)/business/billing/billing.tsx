@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/toast";
 import { businessAccounts } from "@/lib/data/business";
 import { businessAllowances, businessFeeHistory, businessInvoices, RESET_DATE } from "@/lib/data/pricing";
+import { downloadFeeStatement } from "@/lib/export/documents";
 import { fmtDate, iban, money, NOW } from "@/lib/format";
 
 const DAY_OF_MONTH = 29;
@@ -45,7 +46,10 @@ export function Billing() {
           <Button
             variant="secondary"
             leading={<FileText className="size-4" />}
-            onClick={() => toast({ title: "Fee statement downloaded", description: "fees-2026-10-estimate.pdf" })}
+            onClick={async () => {
+              const file = await downloadFeeStatement(businessInvoices[0]!);
+              toast({ title: "Fee statement downloaded", description: file });
+            }}
           >
             Download fee statement
           </Button>
@@ -146,7 +150,10 @@ export function Billing() {
                   variant="tertiary"
                   icon
                   aria-label={`Download ${inv.period} fee statement`}
-                  onClick={() => toast({ title: "Fee statement downloaded", description: `${inv.id.toLowerCase()}.pdf` })}
+                  onClick={async () => {
+                    const file = await downloadFeeStatement(inv);
+                    toast({ title: "Fee statement downloaded", description: file });
+                  }}
                 >
                   <Download className="size-4" />
                 </Button>

@@ -214,9 +214,9 @@ export function Transactions() {
         open={exportOpen}
         onClose={() => setExportOpen(false)}
         accounts={accounts.filter((a) => a.kind === "current" || a.kind === "savings")}
-        onExport={({ file, account, period }) =>
-          toast({ title: "Statement downloaded", description: `${file} · ${account} · ${period} · ${person.name}` })
-        }
+        txns={state.personal.txns}
+        holder={{ name: person.name, id: person.idCode }}
+        onExport={({ file, account, period }) => toast({ title: "Statement downloaded", description: `${file} · ${account} · ${period}` })}
       />
     </PageContainer>
   );

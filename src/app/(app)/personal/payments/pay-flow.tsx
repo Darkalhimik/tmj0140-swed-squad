@@ -15,6 +15,7 @@ import { KeyValue, Money, Note } from "@/components/ui/misc";
 import { Segmented } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/cn";
+import { downloadPersonalPaymentConfirmation } from "@/lib/export/documents";
 import { fmtDate, iban as fmtIban, money, NOW } from "@/lib/format";
 import { useStore } from "@/lib/store";
 
@@ -173,7 +174,19 @@ export function PayFlow({
           <Button
             variant="secondary"
             leading={<Download className="size-4" />}
-            onClick={() => toast({ title: "Confirmation downloaded", description: "payment-confirmation.pdf · signed by Swedbank" })}
+            onClick={async () => {
+              const file = await downloadPersonalPaymentConfirmation({
+                name: sent.name.trim(),
+                iban: sent.iban,
+                bank: sent.bank,
+                amount: sent.value,
+                description: sent.description,
+                refNo: sent.refNo,
+                instant: sent.instant,
+                scheduled: sent.when === "later" ? sent.date : null,
+              });
+              toast({ title: "Confirmation downloaded", description: file });
+            }}
           >
             Download confirmation
           </Button>

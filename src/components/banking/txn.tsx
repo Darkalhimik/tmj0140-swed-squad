@@ -27,6 +27,7 @@ import { useToast } from "@/components/ui/toast";
 import { categoryMeta, merchantStyle } from "@/lib/data/merchants";
 import { cn } from "@/lib/cn";
 import { fmtDateTime, fmtTime, iban as fmtIban } from "@/lib/format";
+import { downloadTxnConfirmation } from "@/lib/export/documents";
 import type { Card, Txn } from "@/lib/types";
 
 const PEOPLE = /^(Kristjan|Landlord|Liisa|Eva) /;
@@ -310,7 +311,14 @@ export function TxnDrawer({
             <Button variant="secondary" leading={<Split className="size-4" />} onClick={() => toast({ title: "Split request sent", description: "Kristjan Tamm will get a payment link" })}>
               Split bill
             </Button>
-            <Button variant="secondary" leading={<FileText className="size-4" />} onClick={() => toast({ title: "Confirmation downloaded", description: "payment-confirmation.pdf" })}>
+            <Button
+              variant="secondary"
+              leading={<FileText className="size-4" />}
+              onClick={async () => {
+                const file = await downloadTxnConfirmation(txn);
+                toast({ title: "Confirmation downloaded", description: file });
+              }}
+            >
               Get confirmation
             </Button>
             <Button variant="secondary" leading={<TriangleAlert className="size-4" />} onClick={() => toast({ title: "Dispute started", tone: "info", description: "We'll reply within 2 business days" })}>

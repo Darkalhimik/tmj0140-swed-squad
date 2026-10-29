@@ -3,7 +3,7 @@
 import { Calendar, ChevronDown, ChevronRight, Download, History, Search, Users } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { categoryOf, parseDiff, requestId, toCsvRow, verb, type ActivityCategory } from "@/components/business/activity-utils";
+import { categoryOf, parseDiff, requestId, verb, type ActivityCategory } from "@/components/business/activity-utils";
 import { OakMark } from "@/components/brand/logo";
 import { PageContainer, PageHeader } from "@/components/shell/page-header";
 import { Avatar } from "@/components/ui/avatar";
@@ -16,6 +16,7 @@ import { Drawer } from "@/components/ui/overlay";
 import { Segmented } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/cn";
+import { downloadCsv } from "@/lib/export/download";
 import { company, members as seedMembers, roleMeta } from "@/lib/data/business";
 import { dayLabel, fmtDateTime, fmtTime, groupBy, NOW, relative } from "@/lib/format";
 import { useStore } from "@/lib/store";
@@ -59,14 +60,10 @@ export function ActivityLog() {
   const filtered = actor !== "all" || category !== "all" || period !== "30" || !!query;
 
   const exportCsv = () => {
-    const header = "time,actor,action,target,detail,device,ip";
-    const csv = [header, ...events.map((e) => toCsvRow(e, nameOf(e.actor)))].join("\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "activity-log-2026-10-29.csv";
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadCsv("activity-log-2026-10-29.csv", [
+      ["time", "actor", "action", "target", "detail", "device", "ip"],
+      ...events.map((e) => [e.at, nameOf(e.actor), e.action, e.target, e.detail ?? "", e.device, e.ip]),
+    ]);
     dispatch({
       type: "biz/log",
       action: "export.created",
