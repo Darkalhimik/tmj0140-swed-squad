@@ -14,6 +14,7 @@ It focuses on four areas:
 | Personal account | `/personal/*` — one balance, four quick actions, transactions with status timelines, cards, payments |
 | Management | `/business/team`, `/business/payments` (approvals + rules), `/business/cards`, `/business/settings` |
 | Transparency | fee preview before every confirmation, `/personal/plan`, `/business/billing`, `/business/activity` (audit log), Smart-ID modal that states exactly what is signed |
+| **Today vs. concept** | `/compare` — five everyday jobs side by side: how they work at Swedbank Estonia today (steps, channels, fees, sources) next to the live concept screen |
 
 ## Run it
 
@@ -26,7 +27,8 @@ npm run dev        # http://localhost:3000
 
 ## Five-minute demo script
 
-1. **Log in** (`/`) — Smart-ID with a prefilled ID code, control code, done.
+0. **Today vs. concept** (`/compare`) — start here to show *why*: the problem and the fix for each job, with sources.
+1. **Log in** (`/`) — Smart-ID, Mobile-ID (asks for your phone) or ID-card (PIN1, no code). New customers: “Become a customer” (`/join`).
 2. **Personal overview** — hide/show balance, pending amounts explained, freeze the card (with Undo), open a transaction to see its status timeline and fee line.
 3. **Pay** — enter an IBAN (the bank is detected from the code), review the fee breakdown and arrival time, sign with Smart-ID.
 4. **Plan & fees** — allowances with what's left and when they reset, fee history, plain-language price list.
@@ -56,7 +58,8 @@ docs/research/*                      Research reports (Swedbank, Revolut, Vercel
 - **Ink is the primary action.** White text on `#FF5F00` is about 3:1 contrast, so orange buttons only appear as Swedbank's 19px bold pill (large-text AA). Everywhere else the primary button is bark brown, as Vercel's is black.
 - **Orange is an accent**: logo, active nav icon, progress, the one main CTA of a flow. Links and focus rings use Swedbank teal `#257886`.
 - **Every fee before every confirmation**, every signing action through Smart-ID with the exact details, every business change in the activity log.
-- Fonts: Geist Sans / Geist Mono (mono only for IBANs, IDs, IPs and logs).
+- Fonts: Roboto (Swedbank's own body face) and Rubik as a stand-in for Swedbank Headline; Roboto Mono only for IBANs, IDs and logs.
+- Every number is derived from the mock transactions (card limits, monthly totals, payment limits), so the screens agree with each other.
 
 ## Data and accuracy
 

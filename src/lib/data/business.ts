@@ -1,6 +1,8 @@
-import type { Account, ApprovalRule, AuditEvent, BizPayment, Card, Invite, Member, RoleId, Txn } from "@/lib/types";
+import type { Account, ApprovalRule, AuditEvent, BizPayment, Card, CompanyLimits, CompanyProfile, Invite, Member, RoleId, Txn } from "@/lib/types";
 
-export const company = {
+/** Seed profile for the demo company. Pages read the active company from the store. */
+export const company: CompanyProfile = {
+  id: "c-nordlight",
   name: "Nordlight Studio OÜ",
   short: "Nordlight Studio",
   registryCode: "16843027",
@@ -14,6 +16,13 @@ export const company = {
     nextReview: "2027-03-14",
     risk: "Standard",
   },
+  board: ["Mari Tamm", "Karl Põder"],
+  owners: [
+    { name: "Mari Tamm", share: 60 },
+    { name: "Karl Põder", share: 40 },
+  ],
+  representation: "alone",
+  mark: { letter: "N", bg: "#1e2a3a", fg: "#f6d58b" },
 };
 
 export const businessAccounts: Account[] = [
@@ -138,16 +147,6 @@ export const roleMeta: Record<RoleId, { label: string; description: string; righ
   viewer: { label: "Viewer", description: "Read-only access to balances, statements and reports.", rights: "Information" },
 };
 
-/** Company-level limits from the Digital Services Agreement. */
-export const companyLimits = {
-  daily: { used: 6200, max: 20000 },
-  monthly: { used: 41380, max: 60000 },
-  instantDaily: { used: 2450, max: 15000 },
-  instantPerPayment: 5000,
-  selfServiceMax: { daily: 50000, monthly: 100000 },
-  secondApprovalFrom: 10000,
-  loginCountries: ["Estonia", "Latvia", "Lithuania", "Finland"],
-};
 
 export const permissions: Permission[] = [
   { key: "view", label: "View balances & statements", group: "Money", roles: { owner: true, admin: true, accountant: true, employee: false, viewer: true } },
@@ -206,8 +205,8 @@ export const businessPayments: BizPayment[] = [
   },
   {
     id: "PAY-2039",
-    createdAt: "2026-10-27T11:05:00+02:00",
-    createdBy: "m-karl",
+    createdAt: "2026-10-27T10:58:00+02:00",
+    createdBy: "m-liis",
     beneficiary: "Klick Eesti AS",
     iban: "EE081010010554433221",
     amount: 12480,
@@ -260,7 +259,7 @@ export const businessPayments: BizPayment[] = [
   {
     id: "PAY-2037",
     createdAt: "2026-10-14T09:10:00+03:00",
-    createdBy: "m-karl",
+    createdBy: "m-liis",
     beneficiary: "Zone Media OÜ",
     iban: "EE272200221012340099",
     amount: 89.4,
@@ -407,7 +406,22 @@ export const businessTxns: Txn[] = [
   bt("bt-14", "2026-10-05T09:00:00+03:00", "Swedbank", -10.54, "fees", "fee", { reference: "Service fees · September (5 cards, 6 money requests)" }),
   bt("bt-15", "2026-10-02T10:00:00+03:00", "Tallink", -186, "travel", "card", { cardId: "bc-kertu", memberId: "m-kertu", receipt: false }),
   bt("bt-16", "2026-10-01T15:00:00+03:00", "Hepta Group OÜ", 18600, "income", "sepa", { reference: "Invoice NL-2026-109" }),
+  bt("bt-17", "2026-10-22T14:10:00+03:00", "Tallinn Print OÜ", -78.51, "office", "card", { cardId: "bc-jaan", memberId: "m-jaan", receipt: true }),
+  bt("bt-18", "2026-10-19T18:30:00+03:00", "Bolt", -21.5, "travel", "card", { cardId: "bc-jaan", memberId: "m-jaan", receipt: true }),
+  bt("bt-19", "2026-10-16T12:45:00+03:00", "Rimi", -86.8, "eating-out", "card", { cardId: "bc-jaan", memberId: "m-jaan", receipt: true }),
+  bt("bt-20", "2026-10-12T10:05:00+03:00", "Adobe", -59.99, "software", "card", { cardId: "bc-jaan", memberId: "m-jaan", receipt: true }),
+  bt("bt-21", "2026-10-06T15:20:00+03:00", "Apple Eesti", -1099, "office", "card", { cardId: "bc-jaan", memberId: "m-jaan", receipt: true }),
+  bt("bt-22", "2026-10-18T11:00:00+03:00", "Kaubamaja", -300, "office", "card", { cardId: "bc-mari", memberId: "m-mari", receipt: true }),
+  bt("bt-23", "2026-10-09T20:15:00+03:00", "Hotel Telegraaf", -412, "travel", "card", { cardId: "bc-mari", memberId: "m-mari", receipt: true }),
+  bt("bt-24", "2026-10-08T07:40:00+03:00", "Lufthansa", -548.4, "travel", "card", { cardId: "bc-mari", memberId: "m-mari", receipt: true }),
+  bt("bt-25", "2026-10-23T21:05:00+03:00", "Radisson Blu", -235.7, "travel", "card", { cardId: "bc-karl", memberId: "m-karl", receipt: true }),
+  bt("bt-26", "2026-10-13T16:30:00+03:00", "Euronics", -2849, "office", "card", { cardId: "bc-karl", memberId: "m-karl", receipt: true }),
+  bt("bt-27", "2026-10-07T12:20:00+03:00", "Lounaspea", -26.5, "eating-out", "card", { cardId: "bc-kertu", memberId: "m-kertu", receipt: true }),
+  bt("bt-28", "2026-10-03T09:00:00+03:00", "Slack", -108.12, "software", "card", { cardId: "bc-subs", receipt: true }),
 ];
+
+// Newest first, so lists and statements read naturally.
+businessTxns.sort((a, b) => b.at.localeCompare(a.at));
 
 export const cashflow = [
   { label: "May", a: 38200, b: 29400 },
@@ -415,8 +429,35 @@ export const cashflow = [
   { label: "Jul", a: 29600, b: 30200 },
   { label: "Aug", a: 35400, b: 28800 },
   { label: "Sep", a: 47100, b: 33600 },
-  { label: "Oct", a: 45252, b: 31180 },
+  { label: "Oct", a: octIn(), b: octOut() },
 ];
+
+function octTxns() {
+  return businessTxns.filter((t) => t.accountId === "b-main" && t.at.startsWith("2026-10") && t.status !== "declined");
+}
+function octIn() {
+  return Math.round(octTxns().filter((t) => t.amount > 0).reduce((sum, t) => sum + t.amount, 0) * 100) / 100;
+}
+function octOut() {
+  return Math.round(-octTxns().filter((t) => t.amount < 0).reduce((sum, t) => sum + t.amount, 0) * 100) / 100;
+}
+/** Outgoing bank payments (not card spend) this month — what the monthly payment limit counts. */
+function octPaymentsOut() {
+  return (
+    Math.round(-octTxns().filter((t) => t.amount < 0 && (t.method === "sepa" || t.method === "instant")).reduce((sum, t) => sum + t.amount, 0) * 100) / 100
+  );
+}
+
+/** Company-level limits from the Digital Services Agreement. Usage comes from the transactions. */
+export const companyLimits: CompanyLimits = {
+  daily: { used: 0, max: 20000 },
+  monthly: { used: octPaymentsOut(), max: 60000 },
+  instantDaily: { used: 0, max: 15000 },
+  instantPerPayment: 5000,
+  selfServiceMax: { daily: 50000, monthly: 100000 },
+  secondApprovalFrom: 10000,
+  loginCountries: ["Estonia", "Latvia", "Lithuania", "Finland"],
+};
 
 const ev = (id: string, at: string, actor: string, action: string, target: string, detail?: string, device = "Chrome · macOS", ip = "84.50.112.7"): AuditEvent => ({
   id,
@@ -439,7 +480,7 @@ export const auditLog: AuditEvent[] = [
   ev("a-34", "2026-10-28T14:02:00+02:00", "system", "payment.received", "Hepta Group OÜ", "€24,800.00", "SEPA", "—"),
   ev("a-33", "2026-10-27T15:00:00+02:00", "m-mari", "member.invited", "oliver@nordlight.ee", "Role: Employee"),
   ev("a-32", "2026-10-27T11:06:00+02:00", "m-karl", "payment.approved", "PAY-2039 · Klick Eesti AS", "1 of 2 approvals", "iPhone 15 Pro", "90.191.40.18"),
-  ev("a-31", "2026-10-27T11:05:00+02:00", "m-karl", "payment.created", "PAY-2039 · Klick Eesti AS", "€12,480.00", "iPhone 15 Pro", "90.191.40.18"),
+  ev("a-31", "2026-10-27T10:58:00+02:00", "m-liis", "payment.created", "PAY-2039 · Klick Eesti AS", "€12,480.00", "Edge · Windows", "213.35.160.2"),
   ev("a-30", "2026-10-26T15:40:00+02:00", "m-karl", "payment.approved", "PAY-2040 · Salaries · October", "2 of 2 approvals · scheduled 31 Oct", "iPhone 15 Pro", "90.191.40.18"),
   ev("a-29", "2026-10-26T14:12:00+02:00", "m-mari", "payment.approved", "PAY-2040 · Salaries · October", "1 of 2 approvals"),
   ev("a-28", "2026-10-25T10:30:00+03:00", "m-mari", "card.frozen", "Kertu Mägi ••3398", "Reason: card misplaced"),

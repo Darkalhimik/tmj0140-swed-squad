@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useCallback, useState, type ReactNode } from "react";
 import { SmartIdModal } from "@/components/banking/smart-id";
+import { changedFields, DetailsModal, type PersonalDetails } from "@/components/personal/details-modal";
 import { SettingsRow, SettingsSection } from "@/components/personal/settings-section";
 import { PageContainer, PageHeader } from "@/components/shell/page-header";
 import { Avatar } from "@/components/ui/avatar";
@@ -57,6 +58,17 @@ type Signing = { action: string; details: { label: string; value: ReactNode }[];
 export function Security() {
   const toast = useToast();
   const { state } = useStore();
+  const [details, setDetails] = useState<PersonalDetails>({
+    email: person.email,
+    phone: person.phone,
+    address: "Kalasadama 4-12, 10415 Tallinn",
+    taxResidency: "Estonia",
+    income: "Salary",
+    employer: "Nordlight Studio OÜ",
+  });
+  const [confirmed, setConfirmed] = useState({ contact: "2026-03-12", address: "2025-03-14", income: "2025-03-14", nextReview: "March 2027" });
+  const [editingDetails, setEditingDetails] = useState(false);
+  const [pendingDetails, setPendingDetails] = useState<PersonalDetails | null>(null);
   const [devices, setDevices] = useState(seedDevices);
   const [consents, setConsents] = useState(seedConsents);
   const [prefs, setPrefs] = useState(PREFS);
@@ -301,8 +313,8 @@ export function Security() {
           }
           footer={
             <>
-              <span>Next review due March 2027 — we’ll remind you a month before.</span>
-              <Button size="sm" variant="tertiary" onClick={() => toast({ title: "Details form opened", tone: "info", description: "Update and confirm with Smart-ID" })}>
+              <span>Next review due {confirmed.nextReview} — we’ll remind you a month before.</span>
+              <Button size="sm" variant="secondary" onClick={() => setEditingDetails(true)}>
                 Update details
               </Button>
             </>
@@ -311,9 +323,19 @@ export function Security() {
           <dl className="divide-y divide-line">
             {[
               { label: "Name and personal code", value: `${person.name} · ${person.idCode}`, at: "From the Population Register", icon: <UserRound className="size-4" /> },
-              { label: "Contact details", value: `${person.phone} · ${person.email}`, at: "Confirmed 12 Mar 2026", icon: <Bell className="size-4" /> },
-              { label: "Address and tax residency", value: "Tallinn, Estonia · tax resident in Estonia", at: "Confirmed 14 Mar 2025", icon: <UserRound className="size-4" /> },
-              { label: "Source of income", value: "Salary · Nordlight Studio OÜ", at: "Confirmed 14 Mar 2025", icon: <UserRound className="size-4" /> },
+              { label: "Contact details", value: `${details.phone} · ${details.email}`, at: confirmedLabel(confirmed.contact), icon: <Bell className="size-4" /> },
+              {
+                label: "Address and tax residency",
+                value: `${details.address} · tax resident in ${details.taxResidency}`,
+                at: confirmedLabel(confirmed.address),
+                icon: <UserRound className="size-4" />,
+              },
+              {
+                label: "Source of income",
+                value: details.employer ? `${details.income} · ${details.employer}` : details.income,
+                at: confirmedLabel(confirmed.income),
+                icon: <UserRound className="size-4" />,
+              },
               { label: "Marketing consents", value: "None given", at: "You can change this any time", icon: <Bell className="size-4" /> },
             ].map((r) => (
               <SettingsRow key={r.label} icon={r.icon} title={r.label} description={r.value}>
@@ -323,6 +345,38 @@ export function Security() {
           </dl>
         </SettingsSection>
       </div>
+
+      <DetailsModal
+        open={editingDetails}
+        onClose={() => setEditingDetails(false)}
+        name={person.name}
+        idCode={person.idCode}
+        current={details}
+        onReview={(next) => {
+          setEditingDetails(false);
+          setPendingDetails(next);
+        }}
+      />
+      <SmartIdModal
+        open={!!pendingDetails}
+        onClose={() => setPendingDetails(null)}
+        onConfirmed={() => {
+          if (!pendingDetails) return;
+          const changes = changedFields(details, pendingDetails);
+          const today = NOW.toISOString().slice(0, 10);
+          setDetails(pendingDetails);
+          // Confirming your details also completes the regular review of everything we hold.
+          setConfirmed({ contact: today, address: today, income: today, nextReview: "October 2027" });
+          setPendingDetails(null);
+          toast({ title: "Details updated", description: changes.map((c) => c.label).join(", ") + " · next review October 2027" });
+        }}
+        action="Update your personal details"
+        details={
+          pendingDetails
+            ? changedFields(details, pendingDetails).map((c) => ({ label: c.label, value: c.to || "—" }))
+            : []
+        }
+      />
 
       <Modal
         open={!!revoking}
@@ -441,7 +495,7 @@ function LimitModal({ limit, onClose, onApply }: { limit: Limit; onClose: () => 
           size="lg"
           inputMode="decimal"
           prefix={<span className="text-[17px]">€</span>}
-          className="tabular text-[20px] font-semibold"
+          className="font-display tabular text-[20px] font-semibold"
           value={value}
           onChange={(e) => setValue(e.target.value.replace(/[^\d.,]/g, ""))}
           error={n > cap ? `Online you can set up to ${money(cap)}. For more, call +372 6 310 310.` : undefined}
@@ -459,4 +513,8 @@ function LimitModal({ limit, onClose, onApply }: { limit: Limit; onClose: () => 
       </div>
     </Modal>
   );
+}
+
+function confirmedLabel(iso: string) {
+  return iso === NOW.toISOString().slice(0, 10) ? "Confirmed today" : `Confirmed ${fmtDate(`${iso}T12:00:00+02:00`, "long")}`;
 }

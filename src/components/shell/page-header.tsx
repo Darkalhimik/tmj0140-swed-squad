@@ -18,7 +18,7 @@ export function PageHeader({
     <div className={cn("flex flex-col gap-4 pb-6 sm:flex-row sm:items-end sm:justify-between", className)}>
       <div className="min-w-0">
         {eyebrow && <div className="mb-2">{eyebrow}</div>}
-        <h1 className="text-[28px] leading-9 font-semibold tracking-[-0.035em] text-ink">{title}</h1>
+        <h1 className="font-display text-[28px] leading-9 font-semibold tracking-[-0.015em] text-ink">{title}</h1>
         {description && <p className="mt-1 max-w-2xl text-[15px] text-ink-3">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}

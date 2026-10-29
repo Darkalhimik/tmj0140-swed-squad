@@ -62,7 +62,7 @@ export function Menu({
                   item.onSelect();
                 }}
                 className={cn(
-                  "flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-sm transition-colors disabled:opacity-40",
+                  "flex min-h-9 w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-sm transition-colors disabled:opacity-40",
                   item.danger ? "text-danger hover:bg-danger-soft" : "text-ink hover:bg-subtle",
                 )}
               >

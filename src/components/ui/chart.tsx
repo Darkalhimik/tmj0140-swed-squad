@@ -51,34 +51,60 @@ export function Sparkline({
   );
 }
 
-/** Paired in/out bars per period, Vercel usage-chart style. */
+function niceMax(v: number) {
+  if (v <= 0) return 1;
+  const p = 10 ** Math.floor(Math.log10(v));
+  const n = v / p;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p;
+}
+
+const compactEur = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR", notation: "compact", maximumFractionDigits: 1 });
+
+/** Paired in/out bars per period with a labelled value axis and gridlines. */
 export function BarPairs({
   data,
   height = 140,
   className,
+  labels = ["In", "Out"],
 }: {
   data: { label: string; a: number; b: number }[];
   height?: number;
   className?: string;
+  labels?: [string, string];
 }) {
-  const max = Math.max(...data.flatMap((d) => [d.a, d.b]), 1);
+  const max = niceMax(Math.max(...data.flatMap((d) => [d.a, d.b]), 1));
+  const ticks = [max, max / 2, 0];
   return (
-    <div className={cn("flex items-end gap-2", className)} style={{ height }}>
-      {data.map((d) => (
-        <div key={d.label} className="group flex h-full flex-1 flex-col items-center justify-end gap-1.5">
-          <div className="flex h-full w-full items-end justify-center gap-[3px]">
-            <div
-              className="w-full max-w-3 rounded-t-[3px] bg-brown transition-opacity group-hover:opacity-80"
-              style={{ height: `${(d.a / max) * 100}%` }}
-            />
-            <div
-              className="w-full max-w-3 rounded-t-[3px] bg-brand/70 transition-opacity group-hover:opacity-80"
-              style={{ height: `${(d.b / max) * 100}%` }}
-            />
-          </div>
-          <span className="text-[11px] text-ink-4">{d.label}</span>
+    <div className={cn("flex gap-2", className)}>
+      <div className="flex flex-col justify-between pb-5 text-right text-[11px] text-ink-4 tabular" style={{ height }}>
+        {ticks.map((t) => (
+          <span key={t} className="-translate-y-1/2 leading-none first:translate-y-0 last:translate-y-0">
+            {compactEur.format(t)}
+          </span>
+        ))}
+      </div>
+      <div className="relative flex-1">
+        <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-col justify-between" style={{ height: height - 20 }} aria-hidden>
+          {ticks.map((t) => (
+            <span key={t} className="h-px w-full bg-line" />
+          ))}
         </div>
-      ))}
+        <div className="relative flex items-end gap-2" style={{ height }}>
+          {data.map((d) => (
+            <div
+              key={d.label}
+              className="group flex h-full flex-1 flex-col items-center justify-end gap-1.5"
+              title={`${d.label}: ${labels[0].toLowerCase()} ${compactEur.format(d.a)}, ${labels[1].toLowerCase()} ${compactEur.format(d.b)}`}
+            >
+              <div className="flex w-full items-end justify-center gap-[3px]" style={{ height: height - 20 }}>
+                <div className="w-full max-w-3 rounded-t-[3px] bg-brown transition-opacity group-hover:opacity-80" style={{ height: `${(d.a / max) * 100}%` }} />
+                <div className="w-full max-w-3 rounded-t-[3px] bg-brand/70 transition-opacity group-hover:opacity-80" style={{ height: `${(d.b / max) * 100}%` }} />
+              </div>
+              <span className="h-[14px] text-[11px] leading-[14px] text-ink-4">{d.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

@@ -12,6 +12,7 @@ export type Category =
   | "transfers"
   | "savings"
   | "fees"
+  | "cash"
   | "software"
   | "office"
   | "salaries"
@@ -44,6 +45,8 @@ export type Txn = {
   receipt?: boolean;
   /** Push-to-card transfer (Visa Direct / Mastercard Move). */
   toCard?: { last4: string; network: string; bank: string; country: string };
+  /** This line refunds another transaction (by id). */
+  refundOf?: string;
   /** Set when the recipient's card is in another currency. */
   fx?: { currency: string; rate: number; mid: number; received: number };
 };
@@ -159,4 +162,33 @@ export type Notification = {
   scope: "personal" | "business";
   unread: boolean;
   href?: string;
+};
+
+export type CompanyProfile = {
+  id: string;
+  name: string;
+  short: string;
+  registryCode: string;
+  vat: string | null;
+  founded: string;
+  address: string;
+  emtak: string;
+  employees: number;
+  kyc: { lastReviewed: string; nextReview: string; risk: string };
+  board: string[];
+  owners: { name: string; share: number }[];
+  representation: "alone" | "joint";
+  mark: { letter: string; bg: string; fg: string };
+  /** Registered or onboarded in this session. */
+  isNew?: boolean;
+};
+
+export type CompanyLimits = {
+  daily: { used: number; max: number };
+  monthly: { used: number; max: number };
+  instantDaily: { used: number; max: number };
+  instantPerPayment: number;
+  selfServiceMax: { daily: number; monthly: number };
+  secondApprovalFrom: number;
+  loginCountries: string[];
 };

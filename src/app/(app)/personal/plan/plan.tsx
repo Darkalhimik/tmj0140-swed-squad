@@ -52,7 +52,7 @@ export function PlanAndFees() {
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <Card className="flex flex-col p-6">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-[22px] font-semibold tracking-[-0.03em]">{plan.name}</h2>
+            <h2 className="font-display text-[22px] font-semibold tracking-[-0.015em]">{plan.name}</h2>
             <Badge tone="brown">Your plan</Badge>
           </div>
           <p className="tabular mt-1 text-[15px] text-ink-2">
@@ -79,7 +79,7 @@ export function PlanAndFees() {
 
         <Card className="p-6">
           <p className="text-[13px] text-ink-3">Forecast for November</p>
-          <p className="tabular mt-1 text-[32px] leading-10 font-semibold tracking-[-0.04em]">
+          <p className="font-display tabular mt-1 text-[32px] leading-10 font-semibold tracking-[-0.015em]">
             <Money value={forecast} />
           </p>
           <dl className="mt-4 flex flex-col gap-2 border-t border-line pt-4 text-[13px]">
@@ -135,7 +135,7 @@ export function PlanAndFees() {
 
         <SettingsSection
           title="Price list"
-          description="In plain words, for digital channels. Valid from 1 November 2025."
+          description="In plain words, for the internet bank and app. Plans as in force since 1 Nov 2025, payments and cards as of 31 Aug 2026 — from the swedbank.ee price lists."
           action={
             <Input
               size="sm"

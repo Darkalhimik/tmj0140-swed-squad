@@ -157,7 +157,7 @@ export function CardPayFlow({ autoFocus }: { autoFocus?: boolean }) {
           <span className="flex size-12 animate-pop-in items-center justify-center rounded-full bg-success text-white">
             <Check className="size-6" strokeWidth={2.5} />
           </span>
-          <p className="mt-4 text-[22px] font-semibold tracking-[-0.03em]">
+          <p className="font-display mt-4 text-[22px] font-semibold tracking-[-0.015em]">
             <Money value={sent.value} /> sent to {sent.holder ?? `card ••${sent.last4}`}
           </p>
           <p className="mt-1 text-[13px] text-ink-3">
@@ -376,7 +376,7 @@ export function CardPayFlow({ autoFocus }: { autoFocus?: boolean }) {
           inputMode="decimal"
           placeholder="0.00"
           prefix={<span className="text-[17px] text-ink-2">€</span>}
-          className="tabular text-[20px] font-semibold tracking-[-0.02em]"
+          className="font-display tabular text-[20px] font-semibold tracking-[-0.02em]"
           value={amount}
           onChange={(e) => setAmount(e.target.value.replace(/[^\d.,]/g, ""))}
           error={submitted || value > available ? errors.amount : undefined}

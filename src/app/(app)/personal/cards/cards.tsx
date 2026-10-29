@@ -128,7 +128,7 @@ export function Cards() {
               <BankCard card={card} size="lg" showNumber={revealed === card.id} />
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-[22px] font-semibold tracking-[-0.03em]">{card.name}</h2>
+                  <h2 className="font-display text-[22px] font-semibold tracking-[-0.015em]">{card.name}</h2>
                   {card.frozen ? <Badge tone="info">Frozen</Badge> : <Badge tone="success">Active</Badge>}
                 </div>
                 <p className="mt-1 text-[13px] text-ink-3">
@@ -425,7 +425,7 @@ function LimitModal({
           size="lg"
           inputMode="decimal"
           prefix={<span className="text-[17px]">€</span>}
-          className="tabular text-[20px] font-semibold"
+          className="font-display tabular text-[20px] font-semibold"
           value={value}
           onChange={(e) => setValue(e.target.value.replace(/[^\d.,]/g, ""))}
           aria-label="New limit"

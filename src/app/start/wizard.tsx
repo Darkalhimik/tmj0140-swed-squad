@@ -13,21 +13,21 @@ import { money, NOW } from "@/lib/format";
 import { useStore, type Formation } from "@/lib/store";
 import { AccountStep, ActivityStep, CapitalStep, CompanyStep, LookupStep, PeopleStep, ReviewStep } from "./steps";
 
-type StepDef = { id: string; title: string; description: string; est: string };
+type StepDef = { id: string; title: string; description: string };
 
 export const NEW_STEPS: StepDef[] = [
-  { id: "company", title: "Name & activity", description: "What your company is called and what it does.", est: "2 min" },
-  { id: "people", title: "Founders & board", description: "Who owns the company and who represents it.", est: "2 min" },
-  { id: "capital", title: "Capital & address", description: "Share capital, registered address and tax options.", est: "1 min" },
-  { id: "account", title: "Business account", description: "How you'll use the account, who gets access and cards.", est: "2 min" },
-  { id: "review", title: "Review & sign", description: "Check everything, see every cost, and sign with Smart-ID.", est: "1 min" },
+  { id: "company", title: "Name & activity", description: "What your company is called and what it does." },
+  { id: "people", title: "Founders & board", description: "Who owns the company and who represents it." },
+  { id: "capital", title: "Capital & address", description: "Share capital, registered address and tax options." },
+  { id: "account", title: "Business account", description: "How you'll use the account, who gets access and cards." },
+  { id: "review", title: "Review & sign", description: "Check everything, see every cost, and sign with Smart-ID." },
 ];
 
 export const EXISTING_STEPS: StepDef[] = [
-  { id: "lookup", title: "Find your company", description: "We fill in everything we can from the e-Business Register.", est: "1 min" },
-  { id: "activity", title: "How you'll use it", description: "A few questions we're required to ask every company.", est: "1 min" },
-  { id: "account", title: "Access & cards", description: "Who gets access, approval rules and cards.", est: "1 min" },
-  { id: "review", title: "Review & sign", description: "Check everything and sign with Smart-ID.", est: "1 min" },
+  { id: "lookup", title: "Find your company", description: "We fill in everything we can from the e-Business Register." },
+  { id: "activity", title: "How you'll use it", description: "A few questions we're required to ask every company." },
+  { id: "account", title: "Access & cards", description: "Who gets access, approval rules and cards." },
+  { id: "review", title: "Review & sign", description: "Check everything and sign with Smart-ID." },
 ];
 
 export function stepValid(id: string, f: Formation): boolean {
@@ -72,7 +72,7 @@ export function Wizard() {
         <Badge tone="gray" icon={<ShieldCheck className="size-3" />}>
           Signed in as Mari Tamm · Smart-ID
         </Badge>
-        <h1 className="mt-4 text-[32px] leading-10 font-semibold tracking-[-0.04em]">Start a company with Swedbank</h1>
+        <h1 className="font-display mt-4 text-[32px] leading-10 font-semibold tracking-[-0.015em]">Start a company with Swedbank</h1>
         <p className="mt-2 max-w-xl text-[15px] text-ink-3">
           We file your application with the e-Business Register and open your business account in the same flow. No branch visit, no
           paperwork to upload.
@@ -86,15 +86,13 @@ export function Wizard() {
               value: "new",
               icon: <Building2 className="size-4" />,
               title: "Register a new company (OÜ)",
-              description: "Name check, founders, capital and signing in one place. Most applications are registered the same working day.",
-              meta: <Badge size="xs">~8 min</Badge>,
+              description: "Name check, founders, capital and signing in one place. The registrar usually decides within one working day.",
             },
             {
               value: "existing",
               icon: <FileSearch className="size-4" />,
               title: "Add a company you already own",
-              description: "Enter the registry code and we fill in the details from the e-Business Register. Usually approved in minutes.",
-              meta: <Badge size="xs">~4 min</Badge>,
+              description: "Enter the registry code and we fill in the details from the e-Business Register.",
             },
           ]}
         />
@@ -108,7 +106,7 @@ export function Wizard() {
             : [
                 { k: "Opening the account", v: "€0.00", d: "No monthly account fee" },
                 { k: "Euro payments", v: "1,000 free", d: "Every month, then €0.38" },
-                { k: "Decision", v: "Minutes", d: "We tell you exactly what we check" },
+                { k: "Signing", v: "Online", d: "Smart-ID, Mobile-ID or ID-card · no branch visit" },
               ]
           ).map((x) => (
             <div key={x.k}>
@@ -132,6 +130,17 @@ export function Wizard() {
   const step = steps[f.step]!;
   const last = f.step === steps.length - 1;
   const valid = stepValid(step.id, f);
+  const attempted = f.attempted.includes(step.id);
+  const tryContinue = () => {
+    if (valid) return go(f.step + 1);
+    if (!attempted) set({ attempted: [...f.attempted, step.id] });
+    // Let the highlighted state render, then bring the first problem into view.
+    window.setTimeout(() => {
+      const el = document.querySelector<HTMLElement>("[data-invalid='true'], [aria-invalid='true']");
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      el?.querySelector<HTMLElement>("input, textarea, button")?.focus({ preventScroll: true });
+    }, 50);
+  };
   const go = (i: number) => {
     set({ step: i, furthest: Math.max(f.furthest, i) });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -143,7 +152,7 @@ export function Wizard() {
       <aside className="hidden lg:block">
         <div className="sticky top-24">
           <p className="text-[13px] font-medium text-ink">{f.mode === "new" ? "New company" : "Existing company"}</p>
-          <p className="mt-0.5 text-[12px] text-ink-3">About {f.mode === "new" ? 8 : 4} minutes · saved automatically</p>
+          <p className="mt-0.5 text-[12px] text-ink-3">{steps.length} steps · saved automatically</p>
           <ol className="mt-6 flex flex-col">
             {steps.map((s, i) => {
               const done = i < f.step || (i <= f.furthest && i !== f.step && stepValid(s.id, f));
@@ -173,7 +182,7 @@ export function Wizard() {
                       <span className={cn("block text-sm", current ? "font-medium text-ink" : reachable ? "text-ink-2 group-hover:text-ink" : "text-ink-4")}>
                         {s.title}
                       </span>
-                      <span className="block font-mono text-[11px] text-ink-4">{done ? "Done" : s.est}</span>
+                      {done && <span className="block text-[11px] text-ink-4">Done</span>}
                     </span>
                   </button>
                 </li>
@@ -203,7 +212,6 @@ export function Wizard() {
             <span>
               Step {f.step + 1} of {steps.length}
             </span>
-            <span>{step.est}</span>
           </div>
           <div className="mt-2 flex gap-1">
             {steps.map((s, i) => (
@@ -215,7 +223,7 @@ export function Wizard() {
         <p className="text-[13px] text-ink-3 max-lg:hidden">
           Step {f.step + 1} of {steps.length}
         </p>
-        <h1 className="mt-1 text-[28px] leading-9 font-semibold tracking-[-0.035em]">{step.title}</h1>
+        <h1 className="font-display mt-1 text-[28px] leading-9 font-semibold tracking-[-0.015em]">{step.title}</h1>
         <p className="mt-1 text-[15px] text-ink-3">{step.description}</p>
 
         <div className="mt-8">
@@ -248,7 +256,15 @@ export function Wizard() {
             Back
           </Button>
           <p className="ml-auto hidden text-[13px] text-ink-3 sm:block">
-            {valid ? (last ? "Everything is signed and ready." : "Looks good.") : last ? "Waiting for signatures." : "Fill in the highlighted fields to continue."}
+            {valid ? (
+              last ? "Everything is signed and ready." : "Looks good."
+            ) : last ? (
+              "Waiting for signatures."
+            ) : attempted ? (
+              <span className="text-danger">Fix the highlighted fields to continue.</span>
+            ) : (
+              "Fill in the fields above."
+            )}
           </p>
           {last ? (
             <Button
@@ -263,7 +279,7 @@ export function Wizard() {
               Submit application
             </Button>
           ) : (
-            <Button variant="primary" size="lg" disabled={!valid} trailing={<ArrowRight className="size-4" />} onClick={() => go(f.step + 1)}>
+            <Button variant="primary" size="lg" trailing={<ArrowRight className="size-4" />} onClick={tryContinue}>
               Continue
             </Button>
           )}

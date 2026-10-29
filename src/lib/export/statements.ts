@@ -33,18 +33,12 @@ const TYPE: Record<Txn["method"], string> = {
 
 type Line = Txn & { label: string; refund?: boolean };
 
-/** Booked lines (refunds expanded into their own line) in chronological order. */
+/** Booked lines in chronological order. A refund is its own line (`refundOf`). */
 function bookedLines(txns: Txn[]): Line[] {
-  const out: Line[] = [];
-  for (const t of txns) {
-    if (t.status === "declined" || t.status === "pending") continue;
-    out.push({ ...t, label: TYPE[t.method] });
-    if (t.status === "refunded") {
-      const at = new Date(new Date(t.at).getTime() + 2 * 86_400_000).toISOString();
-      out.push({ ...t, id: `${t.id}-r`, at, amount: -t.amount, label: "Refund", refund: true, reference: `Refund of ${t.id.toUpperCase()}` });
-    }
-  }
-  return out.sort((a, b) => a.at.localeCompare(b.at));
+  return txns
+    .filter((t) => t.status !== "declined" && t.status !== "pending")
+    .map((t) => ({ ...t, label: t.refundOf ? "Refund" : TYPE[t.method], refund: !!t.refundOf }))
+    .sort((a, b) => a.at.localeCompare(b.at));
 }
 
 export function buildStatement(account: Account, txns: Txn[], period: StatementPeriod) {

@@ -28,6 +28,7 @@ import { categoryMeta, merchantStyle } from "@/lib/data/merchants";
 import { cn } from "@/lib/cn";
 import { fmtDateTime, fmtTime, iban as fmtIban } from "@/lib/format";
 import { downloadTxnConfirmation } from "@/lib/export/documents";
+import { useStore } from "@/lib/store";
 import type { Card, Txn } from "@/lib/types";
 
 const PEOPLE = /^(Kristjan|Landlord|Liisa|Eva) /;
@@ -137,7 +138,14 @@ export function TxnStatusLabel({ txn }: { txn: Txn }) {
     return (
       <span className="flex items-center gap-1 text-[11px] text-info">
         <RotateCcw className="size-3" />
-        Refunded
+        Refunded later
+      </span>
+    );
+  if (txn.refundOf)
+    return (
+      <span className="flex items-center gap-1 text-[11px] text-info">
+        <RotateCcw className="size-3" />
+        Refund
       </span>
     );
   if (txn.receipt === false)
@@ -154,6 +162,11 @@ type Step = { label: string; at?: string; state: "done" | "current" | "todo" | "
 
 function timeline(txn: Txn): Step[] {
   const plus = (mins: number) => new Date(new Date(txn.at).getTime() + mins * 60_000).toISOString();
+  if (txn.refundOf)
+    return [
+      { label: "Refund issued by the merchant", at: txn.at, state: "done", note: txn.reference },
+      { label: "Credited to your card account", at: txn.at, state: "done", note: "The original purchase stays in your history, marked as refunded." },
+    ];
   if (txn.method === "card") {
     if (txn.status === "declined")
       return [
@@ -186,7 +199,7 @@ function timeline(txn: Txn): Step[] {
   if (txn.method === "instant")
     return [
       { label: "Sent", at: txn.at, state: "done" },
-      { label: "Received by recipient's bank", at: txn.at, state: "done", note: "SEPA Instant · arrived in 4 seconds" },
+      { label: "Received by recipient's bank", at: txn.at, state: "done", note: "SEPA Instant" },
     ];
   if (txn.status === "pending")
     return [
@@ -251,6 +264,7 @@ export function TxnDrawer({
   member?: string;
 }) {
   const toast = useToast();
+  const { state } = useStore();
   const card = txn?.cardId ? cards?.find((c) => c.id === txn.cardId) : undefined;
   return (
     <Drawer open={!!txn} onClose={onClose} title="Transaction details">
@@ -262,7 +276,7 @@ export function TxnDrawer({
             <Money
               value={txn.amount}
               sign
-              className={cn("mt-1 text-[34px] leading-10 font-semibold tracking-[-0.03em]", txn.amount > 0 ? "text-success" : "text-ink")}
+              className={cn("mt-1 text-[34px] leading-10 font-semibold tracking-[-0.015em]", txn.amount > 0 ? "text-success" : "text-ink")}
             />
             <div className="mt-2 flex items-center gap-1.5">
               <Badge tone="gray" icon={txn.amount > 0 ? <ArrowDownLeft className="size-3" /> : <ArrowUpRight className="size-3" />}>
@@ -351,7 +365,11 @@ export function TxnDrawer({
               variant="secondary"
               leading={<FileText className="size-4" />}
               onClick={async () => {
-                const file = await downloadTxnConfirmation(txn);
+                const account = state.business.accounts.find((a) => a.id === txn.accountId);
+                const file = await downloadTxnConfirmation(
+                  txn,
+                  account ? { ...state.business.profile, iban: account.iban } : undefined,
+                );
                 toast({ title: "Confirmation downloaded", description: file });
               }}
             >

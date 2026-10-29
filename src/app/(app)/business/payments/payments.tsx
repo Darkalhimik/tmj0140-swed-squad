@@ -208,7 +208,7 @@ function ApprovalCard({
   const mine = p.createdBy === CURRENT_MEMBER;
   const approvedByMe = p.approvals.some((a) => a.memberId === CURRENT_MEMBER);
   const others = eligibleApprovers(p, rules, members);
-  const free = freePaymentsUsed(1);
+  const free = freePaymentsUsed(state.business.allowances, 1);
   const left = p.required - p.approvals.length;
 
   return (
@@ -241,7 +241,7 @@ function ApprovalCard({
         {p.attachment && (
           <button
             onClick={async () => {
-              const file = await downloadInvoice(p);
+              const file = await downloadInvoice(p, { ...state.business.profile, iban: state.business.accounts[0]!.iban });
               toast({ title: "Invoice downloaded", description: file });
             }}
             className="rounded-full transition-opacity hover:opacity-80"

@@ -1,9 +1,10 @@
 "use client";
 
-import { ArrowUpRight, Plug, Plus, RefreshCw, TriangleAlert } from "lucide-react";
+import { ArrowUpRight, Plus, RefreshCw, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { CopyRow } from "@/components/banking/account-modals";
 import { SmartIdModal } from "@/components/banking/smart-id";
+import { IntegrationsSection } from "@/components/business/settings-integrations";
 import { AccountStatusSection, KycSection } from "@/components/business/settings-kyc";
 import { LimitsSection, LoginSection } from "@/components/business/settings-limits";
 import { ReadOnlyField, SettingsSection } from "@/components/business/settings-shared";
@@ -16,12 +17,11 @@ import { StackBar } from "@/components/ui/chart";
 import { Input } from "@/components/ui/input";
 import { Money, Note } from "@/components/ui/misc";
 import { Modal } from "@/components/ui/overlay";
-import { StatusDot } from "@/components/ui/status-dot";
 import { Segmented } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
-import { company, roleMeta } from "@/lib/data/business";
+import { roleMeta } from "@/lib/data/business";
 import { fmtDate, iban as fmtIban, money } from "@/lib/format";
-import { useStore } from "@/lib/store";
+import { useCompany, useStore } from "@/lib/store";
 
 const SECTIONS = [
   { id: "general", label: "General" },
@@ -35,10 +35,7 @@ const SECTIONS = [
   { id: "danger", label: "Close account" },
 ];
 
-const OWNERS = [
-  { name: "Mari Tamm", share: 60, color: "var(--color-brown)" },
-  { name: "Karl Põder", share: 40, color: "var(--color-turquoise)" },
-];
+const OWNER_COLORS = ["var(--color-brown)", "var(--color-turquoise)", "var(--color-brand)", "var(--color-yellow)"];
 
 export function CompanySettings() {
   return (
@@ -76,6 +73,7 @@ export function CompanySettings() {
 }
 
 function GeneralSection() {
+  const company = useCompany();
   return (
     <SettingsSection
       id="general"
@@ -88,7 +86,7 @@ function GeneralSection() {
       }
       footer={
         <>
-          <span>Changes are made in the e-Business Register — we pick them up automatically within minutes.</span>
+          <span>Changes are made in the e-Business Register — they show up here after the register publishes them.</span>
           <a
             href="https://ariregister.rik.ee"
             target="_blank"
@@ -109,7 +107,11 @@ function GeneralSection() {
       </div>
       <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
         <ReadOnlyField label="Registry code" value={company.registryCode} mono />
-        <ReadOnlyField label="VAT number" value={company.vat} mono />
+        <ReadOnlyField
+          label="VAT number"
+          value={company.vat && company.vat.startsWith("EE") ? company.vat : company.vat === "Requested" ? "Requested from EMTA" : "Not registered (under €40,000 a year)"}
+          mono={!!company.vat?.startsWith("EE")}
+        />
         <ReadOnlyField label="Registered address" value={company.address} />
         <ReadOnlyField label="Main activity (EMTAK)" value={company.emtak} />
         <ReadOnlyField label="Financial year" value="1 Jan – 31 Dec" />
@@ -120,8 +122,15 @@ function GeneralSection() {
 }
 
 function PeopleSection() {
+  const company = useCompany();
+  const OWNERS = company.owners.map((o, i) => ({ ...o, color: OWNER_COLORS[i % OWNER_COLORS.length]! }));
   const { state } = useStore();
-  const board = state.business.members.filter((m) => m.board);
+  // The registry decides who is on the board; bank access is a separate, per-person grant.
+  const board = company.board.map((name) => ({
+    name,
+    member: state.business.members.find((m) => m.name === name),
+    invite: state.business.invites.find((i) => i.email.split("@")[0]!.replace(/\./g, " ").toLowerCase().startsWith(name.split(" ")[0]!.toLowerCase())),
+  }));
 
   return (
     <SettingsSection
@@ -131,17 +140,29 @@ function PeopleSection() {
     >
       <p className="mb-2 text-[13px] font-medium text-ink-2">Management board</p>
       <ul className="divide-y divide-line rounded-lg shadow-[0_0_0_1px_var(--color-line)]">
-        {board.map((m) => (
-          <li key={m.id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center">
+        {board.map(({ name, member, invite }) => (
+          <li key={name} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center">
             <div className="flex min-w-0 flex-1 items-center gap-3">
-              <Avatar name={m.name} size="md" />
+              <Avatar name={name} size="md" />
               <div className="min-w-0">
-                <p className="text-sm font-medium text-ink">{m.name}</p>
-                <p className="text-[12px] text-ink-3">Board member · represents the company alone</p>
+                <p className="text-sm font-medium text-ink">{name}</p>
+                <p className="text-[12px] text-ink-3">
+                  Board member · {company.representation === "joint" ? "represents the company jointly" : "represents the company alone"}
+                </p>
               </div>
             </div>
             <p className="pl-11 text-[12px] text-ink-3 sm:pl-0 sm:text-right">
-              Bank access: <span className="font-medium text-ink-2">{roleMeta[m.role].label}</span> · {roleMeta[m.role].rights}
+              {member ? (
+                <>
+                  Bank access: <span className="font-medium text-ink-2">{roleMeta[member.role].label}</span> · {roleMeta[member.role].rights}
+                </>
+              ) : invite ? (
+                <>
+                  Bank access: <span className="font-medium text-warning">invited as {roleMeta[invite.role].label}</span> · not accepted yet
+                </>
+              ) : (
+                "No bank access"
+              )}
             </p>
           </li>
         ))}
@@ -149,7 +170,7 @@ function PeopleSection() {
 
       <div className="mt-6 flex items-baseline justify-between gap-4">
         <p className="text-[13px] font-medium text-ink-2">Shareholders & beneficial owners</p>
-        <p className="text-[12px] text-ink-4">Declared 12 Mar 2024</p>
+        <p className="text-[12px] text-ink-4">Declared {fmtDate(company.founded, "long")}</p>
       </div>
       <StackBar className="mt-3 h-2.5" parts={OWNERS.map((o) => ({ label: o.name, value: o.share, color: o.color }))} />
       <ul className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -275,60 +296,8 @@ function AccountsSection() {
   );
 }
 
-const INTEGRATIONS = [
-  { id: "merit", name: "Merit Aktiva", what: "Accounting · transactions and receipts sync every hour", price: "Free", connected: true },
-  { id: "directo", name: "Directo", what: "Accounting & ERP · bank statements and payment files", price: "Free", connected: false },
-  { id: "smartaccounts", name: "SmartAccounts", what: "Accounting · daily statements", price: "Free", connected: false },
-  { id: "gateway", name: "Swedbank Gateway", what: "API and host-to-host access for your own systems", price: "€25.00/month", connected: false },
-];
-
-function IntegrationsSection() {
-  const { dispatch } = useStore();
-  const toast = useToast();
-  const [connected, setConnected] = useState<Record<string, boolean>>(Object.fromEntries(INTEGRATIONS.map((i) => [i.id, i.connected])));
-
-  return (
-    <SettingsSection id="integrations" title="Integrations" description="Connections that can read your accounts. Disconnect any of them at any time.">
-      <ul className="divide-y divide-line">
-        {INTEGRATIONS.map((i) => {
-          const on = connected[i.id];
-          return (
-            <li key={i.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:gap-4">
-              <div className="flex min-w-0 flex-1 items-center gap-3">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-subtle text-ink-3">
-                  <Plug className="size-4" />
-                </span>
-                <div className="min-w-0">
-                  <p className="flex items-center gap-2 text-sm font-medium text-ink">
-                    {i.name}
-                    {on && <StatusDot status="ready" label={i.id === "merit" ? "Synced 28 Oct, 16:05" : "Connected"} />}
-                  </p>
-                  <p className="text-[12px] text-ink-3">
-                    {i.what} · <span className={i.price === "Free" ? "" : "font-medium text-ink-2"}>{i.price}</span>
-                  </p>
-                </div>
-              </div>
-              <Button
-                size="sm"
-                variant={on ? "tertiary" : "secondary"}
-                className="self-end sm:self-auto"
-                onClick={() => {
-                  setConnected((c) => ({ ...c, [i.id]: !on }));
-                  dispatch({ type: "biz/log", action: on ? "integration.disconnected" : "integration.connected", target: i.name, detail: i.price === "Free" ? undefined : i.price });
-                  toast({ title: on ? `${i.name} disconnected` : `${i.name} connected`, description: on ? "It can no longer read your accounts" : `${i.price === "Free" ? "No cost" : i.price} · logged in Activity` });
-                }}
-              >
-                {on ? "Disconnect" : i.price === "Free" ? "Connect" : "Set up"}
-              </Button>
-            </li>
-          );
-        })}
-      </ul>
-    </SettingsSection>
-  );
-}
-
 function DangerSection() {
+  const company = useCompany();
   const { state } = useStore();
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState("");

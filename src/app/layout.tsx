@@ -1,16 +1,24 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Roboto, Roboto_Mono, Rubik } from "next/font/google";
 import { ToastProvider } from "@/components/ui/toast";
 import { StoreProvider } from "@/lib/store";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Roboto is Swedbank's own body typeface; Rubik stands in for Swedbank Headline.
+const roboto = Roboto({
+  variable: "--font-roboto",
   subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "700"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const rubik = Rubik({
+  variable: "--font-rubik",
+  subsets: ["latin", "latin-ext"],
+  weight: ["500", "600", "700"],
+});
+
+const robotoMono = Roboto_Mono({
+  variable: "--font-roboto-mono",
   subsets: ["latin", "latin-ext"],
 });
 
@@ -24,7 +32,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang="en" className={`${roboto.variable} ${rubik.variable} ${robotoMono.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full">
         <StoreProvider>
           <ToastProvider>{children}</ToastProvider>

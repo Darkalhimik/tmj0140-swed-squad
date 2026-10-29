@@ -29,7 +29,9 @@ const verbs: Record<string, string> = {
   "kyc.confirmed": "confirmed",
   "limits.changed": "changed",
   "login.countries_changed": "changed login countries for",
-  "account.opened": "opened sub-account",
+  "account.opened": "opened",
+  "company.registered": "registered the company in",
+  "agreement.signed": "signed the",
   "integration.connected": "connected",
   "integration.disconnected": "disconnected",
 };

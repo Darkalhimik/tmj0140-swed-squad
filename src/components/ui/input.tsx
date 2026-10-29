@@ -67,7 +67,7 @@ export function Input({
   const control = (
     <div
       className={cn(
-        "group flex items-center gap-2 rounded-md bg-surface px-3 shadow-[0_0_0_1px_var(--color-line-strong)] transition-shadow focus-within:shadow-[0_0_0_1px_var(--color-ink-3),0_0_0_4px_rgb(81_43_43/0.06)]",
+        "group flex items-center gap-2 rounded-md bg-surface px-3 shadow-[0_0_0_1px_var(--color-line-strong)] transition-shadow focus-within:shadow-[0_0_0_1px_var(--color-ink-3),0_0_0_4px_rgb(81_43_43/0.06)] has-[input[aria-invalid=true]]:shadow-[0_0_0_1px_var(--color-danger)]",
         error && "shadow-[0_0_0_1px_var(--color-danger)] focus-within:shadow-[0_0_0_1px_var(--color-danger),0_0_0_4px_rgb(200_49_44/0.12)]",
         size === "sm" && "h-8",
         size === "md" && "h-10",

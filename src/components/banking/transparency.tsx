@@ -157,7 +157,7 @@ export function PlanCompare({
               <p className="text-[15px] font-semibold">{p.name}</p>
               {isCurrent ? <Badge tone="brown">Your plan</Badge> : <span className="text-[12px] text-ink-4">{p.tagline}</span>}
             </div>
-            <p className="tabular mt-3 text-[28px] font-semibold tracking-[-0.035em]">
+            <p className="font-display tabular mt-3 text-[28px] font-semibold tracking-[-0.015em]">
               {p.price === 0 ? "Free" : money(p.price)}
               {p.price > 0 && <span className="text-sm font-normal tracking-normal text-ink-3"> / {period}</span>}
             </p>

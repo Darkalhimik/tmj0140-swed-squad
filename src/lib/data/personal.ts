@@ -58,11 +58,16 @@ export const personalTxns: Txn[] = [
   t("pt-15", "2026-10-21T19:20:00+03:00", "Prisma", -63.08, "groceries", "card", { cardId: "pc-debit" }),
   t("pt-16", "2026-10-20T08:00:00+03:00", "Netflix", -9.99, "entertainment", "card", { cardId: "pc-virtual", status: "declined", note: "Virtual card was frozen at the time" }),
   t("pt-17", "2026-10-19T11:11:00+03:00", "Pirita Kohvik", -26.5, "eating-out", "card", { cardId: "pc-credit" }),
+  t("pt-19r", "2026-10-18T11:20:00+03:00", "Kaubamaja", 89, "shopping", "card", {
+    cardId: "pc-credit",
+    refundOf: "pt-19",
+    reference: "Refund of your 16 Oct purchase",
+  }),
   t("pt-18", "2026-10-17T09:00:00+03:00", "Eesti Energia AS", -61.2, "bills", "einvoice", {
     reference: "E-invoice 10/2026 · automatic payment",
     iban: "EE892200001120228796",
   }),
-  t("pt-19", "2026-10-16T15:40:00+03:00", "Kaubamaja", -89, "shopping", "card", { cardId: "pc-credit", status: "refunded", note: "Refund received 18 Oct" }),
+  t("pt-19", "2026-10-16T15:40:00+03:00", "Kaubamaja", -89, "shopping", "card", { cardId: "pc-credit", status: "refunded", note: "Refunded on 18 Oct — see the +€89.00 line that day" }),
   t("pt-20", "2026-10-15T07:30:00+03:00", "Nordlight Studio OÜ", 3150, "income", "sepa", {
     iban: "EE062200221077885511",
     reference: "Salary October 2026",
@@ -70,7 +75,7 @@ export const personalTxns: Txn[] = [
   t("pt-21", "2026-10-15T07:31:00+03:00", "Summer house", -400, "savings", "internal", { reference: "Auto-save rule: 10% of salary" }),
   t("pt-22", "2026-10-14T18:05:00+03:00", "Lidl Eesti", -27.55, "groceries", "card", { cardId: "pc-debit" }),
   t("pt-23", "2026-10-12T21:44:00+03:00", "Bolt Food", -22.3, "eating-out", "card", { cardId: "pc-virtual" }),
-  t("pt-24", "2026-10-10T10:00:00+03:00", "ATM Viru väljak", -60, "transfers", "atm", { cardId: "pc-debit", fee: 0 }),
+  t("pt-24", "2026-10-10T10:00:00+03:00", "ATM Viru väljak", -60, "cash", "atm", { cardId: "pc-debit", fee: 0 }),
   t("pt-25", "2026-10-08T09:00:00+03:00", "Tallinna Vesi", -18.4, "bills", "einvoice", { iban: "EE162200001120000123" }),
   t("pt-26", "2026-10-05T12:00:00+03:00", "Swedbank", -1, "fees", "fee", { reference: "Essential plan · October" }),
   t("pt-27", "2026-10-01T09:00:00+03:00", "Landlord — Peeter Vaher", -650, "bills", "standing", {
@@ -79,6 +84,19 @@ export const personalTxns: Txn[] = [
   }),
   t("pt-28", "2026-10-01T09:01:00+03:00", "Funds", -150, "savings", "internal", { reference: "Monthly fund investment" }),
 ];
+
+
+// Card limit usage is derived from the transactions above, so every number agrees.
+const TODAY = "2026-10-29";
+const ONLINE = new Set(["Bolt", "Wolt", "Bolt Food", "Spotify", "Netflix"]);
+const spent = (cardId: string, test: (t: Txn) => boolean) =>
+  Math.round(
+    -personalTxns
+      .filter((t) => t.cardId === cardId && t.status !== "declined" && test(t))
+      .reduce((sum, t) => sum + t.amount, 0) * 100,
+  ) / 100;
+const today = (t: Txn) => t.at.startsWith(TODAY) && t.method === "card";
+const october = (t: Txn) => t.at.startsWith("2026-10");
 
 export const personalCards: Card[] = [
   {
@@ -92,9 +110,9 @@ export const personalCards: Card[] = [
     expiry: "08/29",
     frozen: false,
     limits: [
-      { label: "Card payments", used: 312.4, max: 3000, period: "day" },
-      { label: "ATM withdrawals", used: 60, max: 1000, period: "day" },
-      { label: "Online payments", used: 471.2, max: 2000, period: "month" },
+      { label: "Card payments", used: spent("pc-debit", today), max: 3000, period: "day" },
+      { label: "ATM withdrawals", used: spent("pc-debit", (t) => t.method === "atm" && t.at.startsWith(TODAY)), max: 1000, period: "day" },
+      { label: "Online payments", used: spent("pc-debit", (t) => october(t) && ONLINE.has(t.counterparty)), max: 2000, period: "month" },
     ],
     settings: { online: true, contactless: true, abroad: true, atm: true },
   },
@@ -110,8 +128,8 @@ export const personalCards: Card[] = [
     frozen: false,
     creditLimit: 2000,
     limits: [
-      { label: "Credit used", used: 412.49, max: 2000, period: "month" },
-      { label: "Card payments", used: 0, max: 2000, period: "day" },
+      { label: "Credit used", used: spent("pc-credit", october), max: 2000, period: "month" },
+      { label: "Card payments", used: spent("pc-credit", today), max: 2000, period: "day" },
     ],
     settings: { online: true, contactless: true, abroad: false, atm: false },
   },
@@ -125,7 +143,7 @@ export const personalCards: Card[] = [
     design: "cream",
     expiry: "11/27",
     frozen: false,
-    limits: [{ label: "Online payments", used: 61.97, max: 150, period: "month" }],
+    limits: [{ label: "Online payments", used: spent("pc-virtual", october), max: 150, period: "month" }],
     settings: { online: true, contactless: false, abroad: true, atm: false },
   },
 ];

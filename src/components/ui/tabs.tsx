@@ -24,6 +24,7 @@ export function Tabs<T extends string>({
         return (
           <button
             key={item.value}
+            type="button"
             role="tab"
             aria-selected={active}
             onClick={() => onChange(item.value)}
@@ -80,6 +81,7 @@ export function Segmented<T extends string>({
         return (
           <button
             key={item.value}
+            type="button"
             role="radio"
             aria-checked={active}
             onClick={() => onChange(item.value)}

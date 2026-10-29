@@ -7,8 +7,9 @@
  * reserved for the single most important action and brand moments.
  */
 @theme {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+  --font-sans: var(--font-roboto), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-rubik), var(--font-roboto), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-roboto-mono), ui-monospace, SFMono-Regular, monospace;
 
   /* Brand — values from swedbank.ee webcomponents 4.0.0 */
   --color-brand: #ff5f00; /* redesign-orange: CTA, logo */
@@ -108,7 +109,14 @@
     background: var(--color-canvas);
     color: var(--color-ink);
     font-family: var(--font-sans);
-    font-feature-settings: "ss01", "cv11";
+  }
+  /* Headings and big numbers use the display face, like Swedbank Headline on swedbank.ee. */
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: var(--font-display);
+    font-weight: 600;
   }
   ::selection {
     background: var(--color-brand-soft);

@@ -12,26 +12,36 @@ import { Note } from "@/components/ui/misc";
 import { StatusDot } from "@/components/ui/status-dot";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/toast";
-import { businessAccounts } from "@/lib/data/business";
-import { businessAllowances, businessFeeHistory, businessInvoices, RESET_DATE } from "@/lib/data/pricing";
+import { RESET_DATE, type Allowance } from "@/lib/data/pricing";
 import { downloadFeeStatement } from "@/lib/export/documents";
 import { fmtDate, iban, money, NOW } from "@/lib/format";
+import { useStore } from "@/lib/store";
 
 const DAY_OF_MONTH = 29;
 const DAYS_IN_MONTH = 31;
 
-function feeLine(key: string) {
-  const a = businessAllowances.find((x) => x.key === key)!;
+const NONE: Allowance = { key: "none", label: "", used: 0, included: 0, unit: "", overage: 0 };
+
+function feeLine(allowances: Allowance[], key: string) {
+  const a = allowances.find((x) => x.key === key) ?? { ...NONE, key };
   return { a, cost: allowanceCost(a) };
 }
 
 export function Billing() {
   const toast = useToast();
+  const { state } = useStore();
+  const {
+    profile: company,
+    accounts: businessAccounts,
+    allowances: businessAllowances,
+    feeHistory: businessFeeHistory,
+    invoices: businessInvoices,
+  } = state.business;
   const total = businessAllowances.reduce((s, a) => s + allowanceCost(a), 0);
-  const payments = feeLine("payments");
-  const cards = feeLine("cards");
-  const swift = feeLine("swift");
-  const requests = feeLine("requests");
+  const payments = feeLine(businessAllowances, "payments");
+  const cards = feeLine(businessAllowances, "cards");
+  const swift = feeLine(businessAllowances, "swift");
+  const requests = feeLine(businessAllowances, "requests");
   const pace = Math.round((payments.a.used / DAY_OF_MONTH) * DAYS_IN_MONTH);
   const freeLeft = (payments.a.included ?? 0) - payments.a.used;
   const daysLeft = Math.ceil((new Date(RESET_DATE).getTime() - NOW.getTime()) / 86_400_000);
@@ -47,7 +57,7 @@ export function Billing() {
             variant="secondary"
             leading={<FileText className="size-4" />}
             onClick={async () => {
-              const file = await downloadFeeStatement(businessInvoices[0]!);
+              const file = await downloadFeeStatement(businessInvoices[0]!, company, main.iban, payments.a.used);
               toast({ title: "Fee statement downloaded", description: file });
             }}
           >
@@ -62,7 +72,7 @@ export function Billing() {
             <p className="text-[15px] font-semibold tracking-[-0.01em]">Estimated fees for October</p>
             <p className="text-[12px] text-ink-3">1–31 Oct · resets {fmtDate(RESET_DATE)}</p>
           </div>
-          <p className="tabular mt-3 text-[34px] leading-10 font-semibold tracking-[-0.04em]">{money(total)}</p>
+          <p className="font-display tabular mt-3 text-[34px] leading-10 font-semibold tracking-[-0.015em]">{money(total)}</p>
           <p className="text-[13px] text-ink-3">
             Charged on 5 Nov from {main.name} · <span className="font-mono tracking-tight">{iban(main.iban).slice(-9)}</span>
           </p>
@@ -75,13 +85,16 @@ export function Billing() {
                 value: money(payments.cost),
                 tone: "success",
               },
-              { label: `Business debit cards · ${cards.a.used} × €2.00`, value: money(cards.cost) },
+              {
+                label: cards.cost === 0 && cards.a.used > 0 ? `Business debit cards · ${cards.a.used} · free in the first year` : `Business debit cards · ${cards.a.used} × €2.00`,
+                value: money(cards.cost),
+              },
               {
                 label: `International payment (SWIFT) · ${swift.a.used} × €6.00`,
                 value: money(swift.cost),
                 hint: "Licence renewal to Arcticwave Ltd, sent 20 Oct (PAY-2038). Shared costs (SHA): intermediary banks may deduct their own fees.",
               },
-              { label: `Money requests · ${requests.a.used} × €0.09`, value: money(requests.cost) },
+              ...(requests.a.used ? [{ label: `Money requests · ${requests.a.used} × €0.09`, value: money(requests.cost) }] : []),
             ]}
             total={{ label: "Estimated total", value: money(total) }}
             arrival={`Final amount on 1 Nov · ${daysLeft} days of usage left in this period`}
@@ -98,10 +111,10 @@ export function Billing() {
               </span>
             </div>
             <div>
-              <p className="tabular text-[22px] font-semibold tracking-[-0.03em]">
+              <p className="font-display tabular text-[22px] font-semibold tracking-[-0.015em]">
                 {payments.a.used} <span className="text-[15px] font-normal text-ink-3">of 1,000</span>
               </p>
-              <p className="text-[13px] text-ink-3">{freeLeft} free payments left this month</p>
+              <p className="text-[13px] text-ink-3">{freeLeft.toLocaleString("en-IE")} free payments left this month</p>
             </div>
           </div>
           <div className="mt-auto pt-5">
@@ -124,7 +137,7 @@ export function Billing() {
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
         <Card className="p-5">
           <p className="text-[15px] font-semibold tracking-[-0.01em]">Fees by month</p>
-          <p className="mb-5 text-[13px] text-ink-3">Last 6 months · every euro itemised in the fee statements</p>
+          <p className="mb-5 text-[13px] text-ink-3">{businessFeeHistory.length === 1 ? "Since the account opened" : `Last ${businessFeeHistory.length} months`} · every euro itemised in the fee statements</p>
           <FeeHistory data={businessFeeHistory} />
         </Card>
 
@@ -151,7 +164,7 @@ export function Billing() {
                   icon
                   aria-label={`Download ${inv.period} fee statement`}
                   onClick={async () => {
-                    const file = await downloadFeeStatement(inv);
+                    const file = await downloadFeeStatement(inv, company, main.iban, payments.a.used);
                     toast({ title: "Fee statement downloaded", description: file });
                   }}
                 >

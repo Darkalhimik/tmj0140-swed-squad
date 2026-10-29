@@ -134,7 +134,7 @@ export function PayFlow({
         : sent.instant
           ? [
               { label: "Sent from Everyday account", at: NOW_ISO, state: "done" },
-              { label: `Received by ${sent.bank ?? "the recipient's bank"}`, at: NOW_ISO, state: "done", note: "SEPA Instant · arrived in 4 seconds" },
+              { label: `Received by ${sent.bank ?? "the recipient's bank"}`, at: NOW_ISO, state: "done", note: "SEPA Instant" },
             ]
           : [
               { label: "Sent from Everyday account", at: NOW_ISO, state: "done" },
@@ -147,7 +147,7 @@ export function PayFlow({
           <span className="flex size-12 animate-pop-in items-center justify-center rounded-full bg-success text-white">
             <Check className="size-6" strokeWidth={2.5} />
           </span>
-          <p className="mt-4 text-[22px] font-semibold tracking-[-0.03em]">
+          <p className="font-display mt-4 text-[22px] font-semibold tracking-[-0.015em]">
             <Money value={sent.value} /> {sent.when === "later" ? "scheduled for" : "sent to"} {sent.name.trim()}
           </p>
           <p className="mt-1 text-[13px] text-ink-3">
@@ -372,7 +372,7 @@ export function PayFlow({
           inputMode="decimal"
           placeholder="0.00"
           prefix={<span className="text-[17px] text-ink-2">€</span>}
-          className="tabular text-[20px] font-semibold tracking-[-0.02em]"
+          className="font-display tabular text-[20px] font-semibold tracking-[-0.02em]"
           value={draft.amount}
           onChange={(e) => set({ amount: e.target.value.replace(/[^\d.,]/g, "") })}
           error={submitted || value > available ? errors.amount : undefined}

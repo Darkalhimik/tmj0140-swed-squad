@@ -1,41 +1,28 @@
 "use client";
 
-import {
-  ArrowLeftRight,
-  ArrowRight,
-  CalendarClock,
-  Eye,
-  EyeOff,
-  FileText,
-  Info,
-  Plus,
-  Send,
-  Snowflake,
-  TrendingUp,
-  Zap,
-} from "lucide-react";
+import { ArrowLeftRight, ArrowRight, Eye, EyeOff, FileText, Plus, Send, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { AccountDetailsModal, MoveMoneyModal } from "@/components/banking/account-modals";
-import { BankCard } from "@/components/banking/bank-card";
+import { AccountDetailsModal, AddMoneyModal, MoveMoneyModal } from "@/components/banking/account-modals";
 import { TxnDrawer, TxnRow } from "@/components/banking/txn";
 import { PageContainer } from "@/components/shell/page-header";
-import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
-import { Sparkline, StackBar } from "@/components/ui/chart";
+import { StackBar } from "@/components/ui/chart";
 import { Meter } from "@/components/ui/meter";
-import { Money, Tooltip } from "@/components/ui/misc";
-import { Switch } from "@/components/ui/switch";
+import { Money } from "@/components/ui/misc";
 import { useToast } from "@/components/ui/toast";
-import { categoryMeta, merchantStyle } from "@/lib/data/merchants";
-import { balanceHistory, person, upcoming } from "@/lib/data/personal";
+import { categoryMeta } from "@/lib/data/merchants";
+import { person, upcoming } from "@/lib/data/personal";
 import { cn } from "@/lib/cn";
 import { dayLabel, fmtDate, groupBy, iban as fmtIban, money, moneyParts } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import type { Category, Txn } from "@/lib/types";
 
-const SPEND_EXCLUDED: Category[] = ["income", "savings", "transfers", "fees"];
+/** Counted in a month: booked or pending, excluding declined payments and refunded purchases with their refunds. */
+function counted(t: Txn) {
+  return t.accountId === "p-main" && t.status !== "declined" && t.status !== "refunded" && !t.refundOf && t.at.startsWith("2026-10");
+}
 
 export function PersonalOverview() {
   const { state, dispatch } = useStore();
@@ -43,209 +30,134 @@ export function PersonalOverview() {
   const { accounts, txns, cards } = state.personal;
   const [selected, setSelected] = useState(accounts[0]!.id);
   const [hidden, setHidden] = useState(false);
-  const [modal, setModal] = useState<"details" | "move" | null>(null);
+  const [modal, setModal] = useState<"add" | "details" | "move" | null>(null);
   const [openTxn, setOpenTxn] = useState<Txn | null>(null);
 
   const account = accounts.find((a) => a.id === selected)!;
+  const main = accounts.find((a) => a.id === "p-main")!;
   const pending = txns.filter((t) => t.accountId === "p-main" && t.status === "pending");
-  const pendingSum = pending.reduce((s, t) => s + t.amount, 0);
+  const reserved = pending.reduce((s, t) => s + t.amount, 0);
   const total = accounts.reduce((s, a) => s + a.balance, 0);
-  const debit = cards.find((c) => c.id === "pc-debit")!;
 
-  const spend = txns.filter((t) => t.amount < 0 && t.status !== "declined" && t.status !== "refunded" && !SPEND_EXCLUDED.includes(t.category));
-  const byCat = groupBy(spend, (t) => t.category)
+  // October: money out = spending + moves to your own savings and funds.
+  const october = txns.filter(counted);
+  const monthIn = october.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+  const out = october.filter((t) => t.amount < 0);
+  const monthOut = -out.reduce((s, t) => s + t.amount, 0);
+  const movedOwn = -out.filter((t) => t.method === "internal").reduce((s, t) => s + t.amount, 0);
+  const spending = out.filter((t) => t.method !== "internal");
+  const spendTotal = monthOut - movedOwn;
+  const byCat = groupBy(spending, (t) => t.category)
     .map(([cat, list]) => ({ cat: cat as Category, value: -list.reduce((s, t) => s + t.amount, 0) }))
     .sort((a, b) => b.value - a.value);
-  const spendTotal = byCat.reduce((s, c) => s + c.value, 0);
+  const top = byCat.slice(0, 4);
+  const other = byCat.slice(4).reduce((s, c) => s + c.value, 0);
 
-  const recent = txns.filter((t) => t.accountId === "p-main").slice(0, 9);
+  const recent = txns.filter((t) => t.accountId === "p-main").slice(0, 8);
   const days = groupBy(recent, (t) => dayLabel(t.at));
-  const parts = moneyParts(account.balance);
-  const october = txns.filter(
-    (t) => t.accountId === "p-main" && t.status !== "declined" && t.status !== "refunded" && t.at.startsWith("2026-10"),
-  );
-  const monthIn = october.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0);
-  const monthOut = october.filter((t) => t.amount < 0).reduce((s, t) => s + t.amount, 0);
+  const nextUp = upcoming.slice(0, 3);
   const upcomingTotal = upcoming.reduce((s, u) => s + u.amount, 0);
+  const parts = moneyParts(account.balance);
+  const debit = cards.find((c) => c.id === "pc-debit")!;
 
   return (
     <PageContainer>
-      <div className="mb-6 flex flex-col gap-1">
+      <div className="mb-6">
         <p className="text-[13px] text-ink-3">Thursday, 29 October</p>
-        <h1 className="text-[28px] leading-9 font-semibold tracking-[-0.035em]">Good morning, {person.firstName}</h1>
+        <h1 className="font-display mt-1 text-[28px] leading-9 font-semibold tracking-[-0.015em]">Good morning, {person.firstName}</h1>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
-        {/* Balance hero */}
-        <Card className="relative flex flex-col overflow-hidden">
-          <div className="relative flex flex-1 flex-col justify-between p-6 pb-5">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <button
-                  onClick={() => setModal("details")}
-                  className="group inline-flex items-center gap-1.5 text-[13px] text-ink-3 hover:text-ink"
-                >
-                  <span className="font-medium text-ink-2 group-hover:text-ink">{account.name}</span>
-                  <span className="font-mono tracking-tight">· {fmtIban(account.iban).slice(-9)}</span>
-                </button>
-                <div className="mt-2 flex items-center gap-3">
-                  <p className="tabular text-[44px] leading-[48px] font-semibold tracking-[-0.045em] text-ink sm:text-[52px] sm:leading-[56px]">
-                    {hidden ? (
-                      "€ ••••"
-                    ) : (
-                      <>
-                        {parts.whole}
-                        <span className="text-[0.55em] tracking-[-0.02em] text-ink-3">{parts.cents}</span>
-                      </>
-                    )}
-                  </p>
-                  <button
-                    onClick={() => setHidden((h) => !h)}
-                    aria-label={hidden ? "Show balance" : "Hide balance"}
-                    className="flex size-8 items-center justify-center rounded-full text-ink-3 transition-colors hover:bg-subtle hover:text-ink"
-                  >
-                    {hidden ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
-                  </button>
-                </div>
-                {account.kind === "current" ? (
-                  <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[13px] text-ink-3">
-                    Available {hidden ? "••••" : money(account.balance + pendingSum)}
-                    <Tooltip content="Card payments are reserved until the shop settles them, usually within 1–3 days.">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-warning-soft px-1.5 text-[12px] text-warning">
-                        <Info className="size-3" />
-                        {pending.length} pending · {money(pendingSum)}
-                      </span>
-                    </Tooltip>
-                  </p>
-                ) : account.goal ? (
-                  <div className="mt-2 max-w-sm">
-                    <div className="mb-1.5 flex justify-between text-[13px] text-ink-3">
-                      <span>{account.goal.name}</span>
-                      <span className="tabular">{Math.round((account.balance / account.goal.target) * 100)}% of {money(account.goal.target)}</span>
-                    </div>
-                    <Meter value={account.balance} max={account.goal.target} tone="bg-brand" />
-                  </div>
+      {/* 1 · Balance and actions */}
+      <Card className="overflow-hidden">
+        <div className="flex flex-col gap-6 p-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-[13px] text-ink-3">
+              <span className="font-medium text-ink-2">{account.name}</span>
+              <span className="font-mono"> · {fmtIban(account.iban).slice(-9)}</span>
+            </p>
+            <div className="mt-1.5 flex items-center gap-2">
+              <p className="font-display tabular text-[44px] leading-[52px] font-semibold tracking-[-0.015em] text-ink">
+                {hidden ? (
+                  "€ ••••"
                 ) : (
-                  <p className="mt-1 inline-flex items-center gap-1 text-[13px] text-success">
-                    <TrendingUp className="size-3.5" /> {account.returnPct}% return this year
-                  </p>
+                  <>
+                    {parts.whole}
+                    <span className="text-[0.55em] text-ink-3">{parts.cents}</span>
+                  </>
                 )}
-              </div>
-              <div className="hidden flex-col items-end gap-1 sm:flex">
-                <Sparkline data={balanceHistory} width={150} height={44} />
-                <span className="text-[11px] text-ink-4">Last 14 days</span>
-              </div>
+              </p>
+              <button
+                onClick={() => setHidden((h) => !h)}
+                className="flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[12px] text-ink-3 transition-colors hover:bg-subtle hover:text-ink"
+              >
+                {hidden ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                {hidden ? "Show" : "Hide"}
+              </button>
             </div>
-
-            {account.kind === "current" && (
-              <dl className="mt-6 grid grid-cols-3 gap-4 border-t border-line pt-4">
-                {[
-                  { label: "In · October", value: monthIn, cls: "text-success", sign: true },
-                  { label: "Out · October", value: monthOut, cls: "text-ink" },
-                  { label: "Coming up · 30 days", value: upcomingTotal, cls: "text-ink-2" },
-                ].map((s) => (
-                  <div key={s.label} className="min-w-0">
-                    <dt className="truncate text-[12px] text-ink-3">{s.label}</dt>
-                    <dd className={cn("tabular mt-0.5 text-[15px] font-semibold tracking-[-0.01em]", s.cls)}>
-                      {hidden ? "••••" : money(s.value, { sign: s.sign })}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
+            {account.kind === "current" ? (
+              <p className="mt-1 text-[13px] text-ink-3">
+                {hidden ? "••••" : money(account.balance + reserved)} available · {money(-reserved)} reserved for {pending.length} card payment
+                {pending.length === 1 ? "" : "s"} not yet booked
+              </p>
+            ) : account.goal ? (
+              <div className="mt-2 max-w-sm">
+                <div className="mb-1.5 flex justify-between text-[13px] text-ink-3">
+                  <span>{account.goal.name}</span>
+                  <span className="tabular">
+                    {Math.round((account.balance / account.goal.target) * 100)}% of {money(account.goal.target)}
+                  </span>
+                </div>
+                <Meter value={account.balance} max={account.goal.target} tone="bg-brand" />
+              </div>
+            ) : (
+              <p className="mt-1 inline-flex items-center gap-1 text-[13px] text-success">
+                <TrendingUp className="size-3.5" /> {account.returnPct}% return this year
+              </p>
             )}
-
-            {/* Account pills */}
-            <div className="mt-5 flex flex-wrap gap-1.5">
-              {accounts.map((a) => (
-                <button
-                  key={a.id}
-                  onClick={() => setSelected(a.id)}
-                  className={cn(
-                    "flex shrink-0 items-center gap-2 rounded-full py-1.5 pr-3 pl-1.5 text-[13px] transition-all",
-                    a.id === selected
-                      ? "bg-brown text-white shadow-[0_2px_6px_rgb(81_43_43/0.3)]"
-                      : "bg-subtle text-ink-2 hover:bg-muted",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "flex size-6 items-center justify-center rounded-full text-[10px] font-bold",
-                      a.id === selected ? "bg-white/15" : "bg-surface shadow-card",
-                    )}
-                  >
-                    {a.kind === "current" ? "€" : a.kind === "savings" ? "S" : a.kind === "funds" ? "F" : "II"}
-                  </span>
-                  <span className="font-medium">{a.name}</span>
-                  <span className={cn("tabular", a.id === selected ? "text-white/70" : "text-ink-3")}>
-                    {hidden ? "••••" : money(a.balance, { compact: a.balance >= 10000 })}
-                  </span>
-                </button>
-              ))}
-            </div>
           </div>
 
-          {/* Quick actions — exactly four */}
-          <div className="grid grid-cols-4 border-t border-line">
-            <QuickAction icon={<Plus className="size-5" />} label="Add money" onClick={() => setModal("details")} />
+          <div className="grid grid-cols-4 gap-2 lg:w-[400px]">
+            <QuickAction icon={<Plus className="size-5" />} label="Add money" onClick={() => setModal("add")} />
             <QuickAction icon={<ArrowLeftRight className="size-5" />} label="Move" onClick={() => setModal("move")} />
             <QuickAction icon={<Send className="size-5" />} label="Pay" href="/personal/payments?new=1" />
             <QuickAction icon={<FileText className="size-5" />} label="Details" onClick={() => setModal("details")} />
           </div>
-        </Card>
+        </div>
 
-        {/* Card widget */}
-        <Card className="flex flex-col p-5">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-[15px] font-semibold tracking-[-0.01em]">Visa Debit</p>
-              <p className="text-[13px] text-ink-3">{debit.frozen ? "Frozen — payments are declined" : "Active · Apple Pay added"}</p>
-            </div>
-            <Link href="/personal/cards" className="text-[13px] font-medium text-ink-3 hover:text-ink">
-              Manage
-            </Link>
+        <div className="flex flex-col gap-3 border-t border-line bg-canvas px-6 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Accounts">
+            {accounts.map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                role="radio"
+                aria-checked={a.id === selected}
+                onClick={() => setSelected(a.id)}
+                className={cn(
+                  "flex h-8 items-center gap-2 rounded-full px-3 text-[13px] transition-colors",
+                  a.id === selected ? "bg-brown text-white" : "bg-surface text-ink-2 shadow-[inset_0_0_0_1px_var(--color-line)] hover:bg-subtle",
+                )}
+              >
+                <span className="font-medium">{a.name}</span>
+                <span className={cn("tabular", a.id === selected ? "text-white/70" : "text-ink-3")}>{hidden ? "••••" : money(a.balance)}</span>
+              </button>
+            ))}
           </div>
-          <div className="mt-4 flex justify-center">
-            <BankCard card={debit} size="md" className="w-full max-w-[300px]" />
-          </div>
-          <div className="mt-5 flex items-center justify-between rounded-lg bg-subtle px-3.5 py-2.5">
-            <span className="flex items-center gap-2 text-sm font-medium">
-              <Snowflake className={cn("size-4", debit.frozen ? "text-info" : "text-ink-3")} />
-              Freeze card
-            </span>
-            <Switch
-              checked={debit.frozen}
-              onChange={(v) => {
-                dispatch({ type: "personal/card", id: debit.id, patch: { frozen: v } });
-                toast({
-                  title: v ? "Card frozen" : "Card unfrozen",
-                  description: v ? "New payments will be declined until you unfreeze." : "You can pay with ••4821 again.",
-                  action: { label: "Undo", onClick: () => dispatch({ type: "personal/card", id: debit.id, patch: { frozen: !v } }) },
-                });
-              }}
-              label="Freeze card"
-            />
-          </div>
-          <div className="mt-4">
-            <div className="mb-1.5 flex justify-between text-[13px]">
-              <span className="text-ink-3">Spent today</span>
-              <span className="tabular text-ink-2">
-                {money(debit.limits[0]!.used)} <span className="text-ink-4">of {money(debit.limits[0]!.max)}</span>
-              </span>
-            </div>
-            <Meter value={debit.limits[0]!.used} max={debit.limits[0]!.max} />
-          </div>
-        </Card>
-      </div>
+          <p className="shrink-0 text-[12px] text-ink-3">
+            Total with Swedbank <span className="tabular font-medium text-ink-2">{hidden ? "€ ••••" : money(total)}</span>
+          </p>
+        </div>
+      </Card>
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
-        {/* Transactions */}
+      <div className="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+        {/* 2 · Transactions */}
         <Card>
           <CardHeader
             title="Transactions"
             description="Everyday account"
             action={
               <ButtonLink href="/personal/transactions" size="sm" variant="tertiary" trailing={<ArrowRight className="size-3.5" />}>
-                See all
+                All transactions
               </ButtonLink>
             }
           />
@@ -268,90 +180,90 @@ export function PersonalOverview() {
         </Card>
 
         <div className="flex flex-col gap-5">
-          {/* Upcoming */}
+          {/* 3 · Spending — categories add up to the total */}
+          <Card className="p-5">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="text-[15px] font-semibold">Spent in October</p>
+              <Money value={spendTotal} className="font-display text-[20px] font-semibold tracking-[-0.02em]" />
+            </div>
+            <StackBar
+              className="mt-4"
+              parts={[
+                ...top.map((c) => ({ label: c.cat, value: c.value, color: categoryMeta[c.cat].color })),
+                ...(other > 0 ? [{ label: "other", value: other, color: "var(--color-line-strong)" }] : []),
+              ]}
+            />
+            <ul className="mt-4 flex flex-col gap-2 text-[13px]">
+              {top.map((c) => (
+                <li key={c.cat} className="flex items-center gap-2">
+                  <span className="size-2 rounded-full" style={{ background: categoryMeta[c.cat].color }} />
+                  <span className="flex-1 text-ink-2">{categoryMeta[c.cat].label}</span>
+                  <Money value={c.value} className="font-medium" />
+                </li>
+              ))}
+              {other > 0 && (
+                <li className="flex items-center gap-2">
+                  <span className="size-2 rounded-full bg-line-strong" />
+                  <span className="flex-1 text-ink-2">Other ({byCat.length - top.length} categories)</span>
+                  <Money value={other} className="font-medium" />
+                </li>
+              )}
+            </ul>
+            <p className="mt-4 border-t border-line pt-3 text-[12px] leading-5 text-ink-3">
+              Money out this month was {money(monthOut)}: {money(spendTotal)} spent plus {money(movedOwn)} moved to your own savings and funds. Money
+              in: {money(monthIn)}.
+            </p>
+          </Card>
+
+          {/* 4 · Coming up */}
           <Card>
             <CardHeader
               title="Coming up"
               description="Next 30 days"
               action={
-                <span className="tabular text-[13px] font-medium text-ink-2">
-                  {money(upcoming.reduce((s, u) => s + u.amount, 0))}
-                </span>
+                <ButtonLink href="/personal/payments" size="sm" variant="tertiary" trailing={<ArrowRight className="size-3.5" />}>
+                  {upcoming.length} payments
+                </ButtonLink>
               }
             />
-            <ul className="px-5 pb-4">
-              {upcoming.map((u) => {
-                const s = merchantStyle(u.counterparty);
-                return (
-                  <li key={u.id} className="flex items-center gap-3 py-2">
-                    <span className="flex w-9 shrink-0 flex-col items-center rounded-md bg-subtle py-1 leading-none">
-                      <span className="text-[10px] text-ink-3 uppercase">{fmtDate(u.at).split(" ")[1]}</span>
-                      <span className="tabular text-[15px] font-semibold">{fmtDate(u.at).split(" ")[0]}</span>
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13px] font-medium" title={u.counterparty}>
-                        {u.counterparty.replace("Landlord — ", "")}
-                      </span>
-                      <span className="flex items-center gap-1 text-[12px] text-ink-3">
-                        {u.kind}
-                        {u.auto ? (
-                          <Badge size="xs" tone="gray" icon={<Zap className="size-2.5" />}>
-                            Auto
-                          </Badge>
-                        ) : (
-                          <Badge size="xs" tone="warning">
-                            Needs you
-                          </Badge>
-                        )}
-                      </span>
-                    </span>
-                    <Money value={u.amount} className="text-[13px] font-medium" />
-                    <span className="sr-only">{s.mark}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          </Card>
-
-          {/* Insights */}
-          <Card className="p-5">
-            <div className="flex items-baseline justify-between">
-              <p className="text-[15px] font-semibold tracking-[-0.01em]">October spending</p>
-              <CalendarClock className="size-4 text-ink-4" />
-            </div>
-            <p className="tabular mt-2 text-[26px] font-semibold tracking-[-0.03em]">{money(spendTotal)}</p>
-            <p className="text-[13px] text-success">€86.20 less than September</p>
-            <StackBar
-              className="mt-4"
-              parts={byCat.map((c) => ({ label: c.cat, value: c.value, color: categoryMeta[c.cat].color }))}
-            />
-            <ul className="mt-4 flex flex-col gap-2">
-              {byCat.slice(0, 5).map((c) => (
-                <li key={c.cat} className="flex items-center gap-2 text-[13px]">
-                  <span className="size-2 rounded-full" style={{ background: categoryMeta[c.cat].color }} />
-                  <span className="flex-1 text-ink-2">{categoryMeta[c.cat].label}</span>
-                  <span className="tabular text-ink-3">{Math.round((c.value / spendTotal) * 100)}%</span>
-                  <Money value={c.value} className="w-20 text-right font-medium" />
+            <ul className="px-5">
+              {nextUp.map((u) => (
+                <li key={u.id} className="flex items-center gap-3 border-t border-line py-2.5 text-[13px] first:border-0">
+                  <span className="tabular w-12 shrink-0 text-ink-3">{fmtDate(u.at)}</span>
+                  <span className="min-w-0 flex-1 truncate text-ink">{u.counterparty.replace("Landlord — ", "")}</span>
+                  <Money value={u.amount} className="font-medium" />
                 </li>
               ))}
             </ul>
-          </Card>
-
-          <Card className="flex items-center justify-between p-5">
-            <div>
-              <p className="text-[13px] text-ink-3">Everything you own with us</p>
-              <p className="tabular mt-0.5 text-lg font-semibold tracking-[-0.02em]">{hidden ? "€ ••••" : money(total)}</p>
-            </div>
-            <span className="text-right text-[12px] text-ink-3">
-              {accounts.length} accounts
-              <br />
-              incl. pension
-            </span>
+            <p className="mx-5 mt-1 mb-4 rounded-md bg-subtle px-3 py-2 text-[12px] text-ink-3">
+              {money(-upcomingTotal)} in total · {money(main.balance + reserved + upcomingTotal)} left of what&apos;s available today
+            </p>
           </Card>
         </div>
       </div>
 
-      <AccountDetailsModal account={account} holder={person.name} open={modal === "details"} onClose={() => setModal(null)} />
+      <AddMoneyModal
+        account={account.kind === "current" || account.kind === "savings" ? account : main}
+        holder={person.name}
+        open={modal === "add"}
+        onClose={() => setModal(null)}
+        onMove={() => setModal("move")}
+      />
+      <AccountDetailsModal
+        account={account}
+        holder={person.name}
+        open={modal === "details"}
+        onClose={() => setModal(null)}
+        extra={
+          account.kind === "current"
+            ? [
+                ["Service plan", "Essential plan · €1.00/month"],
+                ["Debit card", `${debit.name} ••${debit.last4}`],
+                ["Customer since", "June 2009"],
+              ]
+            : []
+        }
+      />
       <MoveMoneyModal
         accounts={accounts}
         fromId={account.kind === "current" || account.kind === "savings" ? account.id : "p-main"}
@@ -359,7 +271,7 @@ export function PersonalOverview() {
         onClose={() => setModal(null)}
         onMove={(from, to, amount) => {
           dispatch({ type: "move", scope: "personal", from, to, amount });
-          toast({ title: `Moved ${money(amount)}`, description: "Arrived instantly · no fee" });
+          toast({ title: `${money(amount)} moved`, description: "No fee" });
         }}
       />
       <TxnDrawer txn={openTxn} onClose={() => setOpenTxn(null)} cards={cards} />
@@ -370,19 +282,19 @@ export function PersonalOverview() {
 function QuickAction({ icon, label, onClick, href }: { icon: React.ReactNode; label: string; onClick?: () => void; href?: string }) {
   const inner = (
     <>
-      <span className="flex size-11 items-center justify-center rounded-full bg-cream text-brown transition-[transform,background-color] duration-200 group-hover:scale-105 group-hover:bg-brand group-hover:text-white">
+      <span className="flex size-11 items-center justify-center rounded-full bg-cream text-brown transition-colors group-hover:bg-brown group-hover:text-white">
         {icon}
       </span>
       <span className="text-[12px] font-medium text-ink-2 group-hover:text-ink">{label}</span>
     </>
   );
-  const cls = "group flex flex-col items-center gap-1.5 py-4 transition-colors hover:bg-subtle/60 [&:not(:last-child)]:border-r [&:not(:last-child)]:border-line";
+  const cls = "group flex flex-col items-center gap-1.5 rounded-lg py-2 transition-colors";
   return href ? (
     <Link href={href} className={cls}>
       {inner}
     </Link>
   ) : (
-    <button onClick={onClick} className={cls}>
+    <button type="button" onClick={onClick} className={cls}>
       {inner}
     </button>
   );

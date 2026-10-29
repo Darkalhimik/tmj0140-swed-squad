@@ -9,7 +9,6 @@ import { Meter } from "@/components/ui/meter";
 import { Note } from "@/components/ui/misc";
 import { Modal } from "@/components/ui/overlay";
 import { useToast } from "@/components/ui/toast";
-import { companyLimits } from "@/lib/data/business";
 import { money } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import { SettingsSection } from "./settings-shared";
@@ -19,6 +18,7 @@ type Limits = { daily: number; monthly: number; instant: number };
 const ALL_COUNTRIES = ["Estonia", "Latvia", "Lithuania", "Finland", "Sweden", "Germany", "United Kingdom", "Spain", "Portugal"];
 
 export function LimitsSection() {
+  const companyLimits = useStore().state.business.limits;
   const { dispatch } = useStore();
   const toast = useToast();
   const [limits, setLimits] = useState<Limits>({
@@ -115,6 +115,7 @@ export function LimitsSection() {
 }
 
 function LimitsDialog({ current, onClose, onSign }: { current: Limits; onClose: () => void; onSign: (next: Limits) => void }) {
+  const companyLimits = useStore().state.business.limits;
   const [form, setForm] = useState({ daily: String(current.daily), monthly: String(current.monthly), instant: String(current.instant) });
   const num = (s: string) => Number(s);
   const cents = (s: string) => /[.,]/.test(s);
@@ -173,6 +174,7 @@ function LimitsDialog({ current, onClose, onSign }: { current: Limits; onClose: 
 }
 
 export function LoginSection() {
+  const companyLimits = useStore().state.business.limits;
   const { dispatch } = useStore();
   const toast = useToast();
   const [saved, setSaved] = useState<string[]>(companyLimits.loginCountries);

@@ -1,10 +1,11 @@
 "use client";
 
-import { Check, Smartphone } from "lucide-react";
+import { Check, CreditCard, Smartphone } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/overlay";
 import { cn } from "@/lib/cn";
+import { useStore, type SignInMethod } from "@/lib/store";
 
 function controlCode(seed: string) {
   let h = 7;
@@ -20,7 +21,7 @@ export function SmartIdModal({
   open,
   onClose,
   onConfirmed,
-  title = "Confirm with Smart-ID",
+  title,
   action,
   details,
 }: {
@@ -31,19 +32,23 @@ export function SmartIdModal({
   action: string;
   details: { label: string; value: ReactNode }[];
 }) {
+  // Sign with the same method used to log in (Smart-ID, Mobile-ID or ID-card).
+  const method = useStore().state.session.method;
   return (
-    <Modal open={open} onClose={onClose} size="sm" title={title} dismissable>
-      {open && <SmartIdBody action={action} details={details} onConfirmed={onConfirmed} onClose={onClose} />}
+    <Modal open={open} onClose={onClose} size="sm" title={title ?? `Confirm with ${method}`} dismissable>
+      {open && <SmartIdBody method={method} action={action} details={details} onConfirmed={onConfirmed} onClose={onClose} />}
     </Modal>
   );
 }
 
 function SmartIdBody({
+  method,
   action,
   details,
   onConfirmed,
   onClose,
 }: {
+  method: SignInMethod;
   action: string;
   details: { label: string; value: ReactNode }[];
   onConfirmed: () => void;
@@ -90,14 +95,29 @@ function SmartIdBody({
             phase === "done" ? "bg-success text-white" : "animate-pulse-ring bg-brand-soft text-brand",
           )}
         >
-          {phase === "done" ? <Check className="size-7 animate-pop-in" strokeWidth={2.5} /> : <Smartphone className="size-6" />}
+          {phase === "done" ? (
+            <Check className="size-7 animate-pop-in" strokeWidth={2.5} />
+          ) : method === "ID-card" ? (
+            <CreditCard className="size-6" />
+          ) : (
+            <Smartphone className="size-6" />
+          )}
         </div>
-        {phase === "waiting" ? (
+        {phase === "waiting" && method === "ID-card" ? (
+          <>
+            <p className="mt-4 text-[15px] font-semibold text-ink">Enter PIN2</p>
+            <p className="mt-1 max-w-[280px] text-[13px] text-ink-3">
+              Keep your ID-card in the reader and type PIN2 in the window your browser opened. There is no control code with an ID-card.
+            </p>
+          </>
+        ) : phase === "waiting" ? (
           <>
             <p className="mt-4 text-[13px] text-ink-3">Control code</p>
             <p className="tabular mt-0.5 font-mono text-[34px] leading-none font-semibold tracking-[0.12em] text-ink">{code}</p>
             <p className="mt-3 max-w-[280px] text-[13px] text-ink-3">
-              Open Smart-ID on your phone and check the code matches before entering PIN2.
+              {method === "Mobile-ID"
+                ? "Your phone shows a Mobile-ID request. Check the code matches before entering PIN2."
+                : "Open Smart-ID on your phone and check the code matches before entering PIN2."}
             </p>
             <p className="tabular mt-2 text-[12px] text-ink-4">
               Request expires in {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}
@@ -106,7 +126,10 @@ function SmartIdBody({
         ) : (
           <>
             <p className="mt-4 text-[15px] font-semibold text-ink">Signed</p>
-            <p className="mt-1 text-[13px] text-ink-3">Confirmed on iPhone 16 · added to your activity log</p>
+            <p className="mt-1 text-[13px] text-ink-3">
+              {method === "ID-card" ? "Confirmed with your ID-card" : method === "Mobile-ID" ? "Confirmed with Mobile-ID" : "Confirmed on iPhone 16"} · added to your
+              activity log
+            </p>
           </>
         )}
       </div>

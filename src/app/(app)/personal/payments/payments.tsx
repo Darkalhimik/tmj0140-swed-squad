@@ -117,6 +117,10 @@ function ComingUp({ scheduled, onCancel }: { scheduled: Item[]; onCancel: (id: s
   const main = state.personal.accounts.find((a) => a.id === "p-main")!;
 
   const txns = state.personal.txns;
+  // Forecast from what you can actually spend: booked balance minus card payments still reserved.
+  const reserved = txns.filter((t) => t.accountId === "p-main" && t.status === "pending").reduce((s, t) => s + t.amount, 0);
+  const available = Math.round((main.balance + reserved) * 100) / 100;
+  const after = Math.round((available + total) * 100) / 100;
 
   const confirmPay = useCallback(() => {
     if (!paying) return;
@@ -140,9 +144,34 @@ function ComingUp({ scheduled, onCancel }: { scheduled: Item[]; onCancel: (id: s
         description="Next 30 days from Everyday account"
         action={<Money value={total} className="text-[13px] font-medium text-ink-2" />}
       />
-      <p className="mx-5 mb-2 rounded-md bg-subtle px-3 py-2 text-[12px] text-ink-3">
-        Balance after these: <Money value={main.balance + total} className="font-medium text-ink-2" />
-      </p>
+      <dl className="mx-5 mb-2 flex flex-col gap-1 rounded-md bg-subtle px-3 py-2.5 text-[12px] text-ink-3">
+        <div className="flex justify-between gap-3">
+          <dt>Balance</dt>
+          <dd>
+            <Money value={main.balance} />
+          </dd>
+        </div>
+        {reserved !== 0 && (
+          <div className="flex justify-between gap-3">
+            <dt>Reserved for pending card payments</dt>
+            <dd>
+              <Money value={reserved} />
+            </dd>
+          </div>
+        )}
+        <div className="flex justify-between gap-3">
+          <dt>Coming up in 30 days</dt>
+          <dd>
+            <Money value={total} />
+          </dd>
+        </div>
+        <div className="mt-0.5 flex justify-between gap-3 border-t border-line-strong/60 pt-1.5 text-ink-2">
+          <dt className="font-medium">Left after these</dt>
+          <dd>
+            <Money value={after} className="font-semibold" />
+          </dd>
+        </div>
+      </dl>
       <ul className="divide-y divide-line px-5 pb-2">
         {items.map((u) => {
           const isAuto = u.mine ? true : auto[u.id];

@@ -13,7 +13,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { StatusDot } from "@/components/ui/status-dot";
 import { useToast } from "@/components/ui/toast";
 import { roleMeta } from "@/lib/data/business";
-import { registryLookup, STATE_FEE } from "@/lib/data/formation";
+import { effectivePreset, NEW_COMPANY, registryLookup, STATE_FEE } from "@/lib/data/formation";
 import { cn } from "@/lib/cn";
 import { accountAgreementPdf, foundingDocumentsPdf } from "@/lib/export/pdf";
 import { iban as fmtIban, money, NOW } from "@/lib/format";
@@ -22,9 +22,9 @@ import type { Card } from "@/lib/types";
 
 type Row = { id: string; label: string; detail: string; ms: number; log: string[]; slow?: boolean };
 
-const NEW_IBAN = "EE582200221081234567";
-const NEW_CODE = "17012345";
-const APP_REF = "2026-0412-883";
+const NEW_IBAN = NEW_COMPANY.iban;
+const NEW_CODE = NEW_COMPANY.registryCode;
+const APP_REF = NEW_COMPANY.appRef;
 
 function clock(offsetSec: number) {
   const d = new Date(NOW.getTime() + offsetSec * 1000);
@@ -75,7 +75,7 @@ function rowsFor(f: Formation, name: string): Row[] {
     {
       id: "review",
       label: "Registrar review",
-      detail: "Usually 2–6 working hours. We'll notify you in the app and by email.",
+      detail: "Usually within one working day (RIK). We'll notify you in the app and by email.",
       ms: 5200,
       slow: true,
       log: [`${clock(11)}  In the registrar's queue`, `${clock(12)}  Assigned to a registrar`, `${clock(13)}  Entered into the register without changes`],
@@ -88,7 +88,7 @@ function rowsFor(f: Formation, name: string): Row[] {
       ms: 1000,
       log: [
         `${clock(15)}  IBAN ${fmtIban(NEW_IBAN)} · BIC HABAEE2X`,
-        `${clock(15)}  Approval rule: ${f.approvalPreset === "second" ? "second approval above €10,000" : f.approvalPreset === "always" ? "two approvals for every payment" : "one approval per payment"}`,
+        `${clock(15)}  Approval rule: ${effectivePreset(f) === "second" ? "second approval above €10,000" : effectivePreset(f) === "always" ? "two approvals for every payment" : "one approval per payment"}`,
         ...others.filter((p) => p.board).map((p) => `${clock(16)}  ${p.name} invited as ${roleMeta[f.coFounderRole].label}`),
       ],
     },
@@ -140,6 +140,12 @@ export function Tracker() {
   const name = isNew ? `${f.name.trim().replace(/\s*OÜ$/i, "") || "Põhjatuul Labs"} OÜ` : (registryLookup[f.existingCode]?.name ?? "Your company");
   const rows = useMemo(() => (f.submittedAt ? rowsFor(f, name) : []), [f, name]);
   const done = rows.length > 0 && progress >= rows.length;
+
+  // The moment registration finishes, the company exists in the bank: it appears in the
+  // profile switcher with its account, cards, people and rules from this application.
+  useEffect(() => {
+    if (done) dispatch({ type: "formation/complete" });
+  }, [done, dispatch]);
 
   useEffect(() => {
     if (!f.submittedAt || progress >= rows.length) return;
@@ -195,7 +201,7 @@ export function Tracker() {
             )}
             <span className="font-mono text-[12px] text-ink-3">{isNew ? `Application ${APP_REF}` : `Registry code ${f.existingCode}`}</span>
           </div>
-          <h1 className="mt-2 text-[28px] leading-9 font-semibold tracking-[-0.035em]">
+          <h1 className="font-display mt-2 text-[28px] leading-9 font-semibold tracking-[-0.015em]">
             {done ? `${name} is ready` : isNew ? `Registering ${name}` : `Opening an account for ${name}`}
           </h1>
           <p className="mt-1 text-[15px] text-ink-3">
@@ -263,7 +269,7 @@ export function Tracker() {
                         </p>
                       ))}
                       {state === "running" && r.slow && (
-                        <p className="mt-1 text-[12px] text-ink-3">Usually 2–6 working hours. Fast-forwarded in this demo.</p>
+                        <p className="mt-1 text-[12px] text-ink-3">Fast-forwarded in this demo. In reality this usually takes up to one working day.</p>
                       )}
                     </div>
                   )}
@@ -285,9 +291,19 @@ export function Tracker() {
                 {isNew && <CopyRow label="Registry code" value={NEW_CODE} />}
                 <CopyRow label="IBAN" value={fmtIban(NEW_IBAN)} />
               </div>
-              <ButtonLink href="/business" variant="brand" size="lg" className="mt-4 w-full" trailing={<ArrowRight className="size-5" />}>
-                Open dashboard
-              </ButtonLink>
+              <Button
+                variant="brand"
+                size="lg"
+                className="mt-4 w-full"
+                trailing={<ArrowRight className="size-5" />}
+                onClick={() => {
+                  // Idempotent: creates the company once, afterwards just switches to it.
+                  dispatch({ type: "formation/complete" });
+                  router.push("/business");
+                }}
+              >
+                Open {name.replace(/ OÜ$/, "")}
+              </Button>
               <Button
                 className="mt-2 w-full"
                 variant="secondary"
@@ -328,7 +344,7 @@ export function Tracker() {
                   <Check className="mt-0.5 size-4 text-success" />
                   <span>
                     Approval rule set:{" "}
-                    {f.approvalPreset === "second" ? "second approval above €10,000" : f.approvalPreset === "always" ? "two approvals always" : "one approval"}
+                    {effectivePreset(f) === "second" ? "second approval above €10,000" : effectivePreset(f) === "always" ? "two approvals always" : "one approval"}
                   </span>
                 </li>
                 <li className="flex items-start gap-2.5">

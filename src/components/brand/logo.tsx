@@ -47,7 +47,7 @@ export function OakMark({ className, mono }: { className?: string; mono?: boolea
 export function Logo({ className, compact }: { className?: string; compact?: boolean }) {
   return (
     <span className={cn("inline-flex items-center gap-1.5", className)}>
-      {!compact && <span className="text-[19px] font-bold tracking-[-0.035em] text-brand">Swedbank</span>}
+      {!compact && <span className="font-display text-[20px] font-bold tracking-[-0.01em] text-brand">Swedbank</span>}
       <OakMark className="size-[22px]" />
     </span>
   );

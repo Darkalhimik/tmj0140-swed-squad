@@ -13,16 +13,17 @@ import { EmptyState, Tooltip } from "@/components/ui/misc";
 import { StatusDot } from "@/components/ui/status-dot";
 import { Tabs } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
-import { company, companyLimits, roleMeta } from "@/lib/data/business";
+import { roleMeta } from "@/lib/data/business";
 import { agreementPdf } from "@/lib/export/pdf";
 import { fmtDate, fmtDateTime, money, NOW, relative } from "@/lib/format";
-import { useStore } from "@/lib/store";
+import { useCompany, useStore } from "@/lib/store";
 
 type Tab = "members" | "invitations" | "roles";
 
 const ACCESS_ACTIONS = new Set(["member.invited", "member.role_changed", "member.limit_changed", "member.removed", "invite.revoked"]);
 
 export function Team() {
+  const company = useCompany();
   const { state } = useStore();
   const [tab, setTab] = useState<Tab>("members");
   const [manualInvite, setManualInvite] = useState(false);
@@ -34,7 +35,7 @@ export function Team() {
     <PageContainer>
       <PageHeader
         title="Team & access"
-        description={`${members.length} people can access ${company.name}. Every change is signed with Smart-ID and shows up in the activity log.`}
+        description={`${members.length} ${members.length === 1 ? "person has" : "people have"} access to ${company.name}. Every change is signed and shows up in the activity log.`}
         actions={
           <Button variant="primary" leading={<UserPlus className="size-4" />} onClick={() => setManualInvite(true)}>
             Invite people
@@ -177,6 +178,8 @@ function Invitations({ onInvite }: { onInvite: () => void }) {
 }
 
 function AgreementCard() {
+  const company = useCompany();
+  const companyLimits = useStore().state.business.limits;
   const { state } = useStore();
   const toast = useToast();
   const signedNow = state.business.audit.filter((e) => e.at === NOW.toISOString() && ACCESS_ACTIONS.has(e.action)).length;

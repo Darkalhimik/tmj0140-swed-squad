@@ -21,7 +21,10 @@ import type { ApprovalRule } from "@/lib/types";
 import { eligibleApprovers, rangeLabel, ruleFor } from "./payments-shared";
 
 const LOCKED = [
-  { title: "Nobody approves their own payment", body: "The person who creates a payment can never be one of its approvers." },
+  {
+    title: "Nobody approves their own payment",
+    body: "The person who creates a payment can't approve it — unless they're the company's only signatory. Then their Smart-ID signature is the approval.",
+  },
   { title: "New beneficiaries need a board member", body: "The first payment to an IBAN you haven't paid before always needs a management board member." },
   {
     title: `Instant payments up to ${money(companyLimits.instantPerPayment)} each`,
@@ -30,6 +33,7 @@ const LOCKED = [
 ];
 
 export function RulesPanel() {
+  const companyLimits = useStore().state.business.limits;
   const { state, dispatch } = useStore();
   const toast = useToast();
   const { rules, members } = state.business;
@@ -249,6 +253,7 @@ function EditRuleBody({
 }
 
 function Simulator() {
+  const companyLimits = useStore().state.business.limits;
   const { state } = useStore();
   const { rules, members } = state.business;
   const [amountRaw, setAmountRaw] = useState("12480");

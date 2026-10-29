@@ -5,16 +5,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { company } from "@/lib/data/business";
 import { person } from "@/lib/data/personal";
 import { useBodyLock, useCloseOnHide, useEscape, useOutsideClick } from "@/lib/hooks";
 import { relative } from "@/lib/format";
 import { cn } from "@/lib/cn";
-import { useStore } from "@/lib/store";
+import { useCompany, useStore } from "@/lib/store";
 import { nav, scopeOf } from "./nav";
 import { openCommandMenu, SidebarContent } from "./sidebar";
 
 export function Topbar() {
+  const company = useCompany();
   const pathname = usePathname();
   const scope = scopeOf(pathname);
   const page = [...nav[scope]].reverse().find((n) => pathname === n.href || pathname.startsWith(n.href + "/"));
@@ -25,7 +25,7 @@ export function Topbar() {
       <button
         className="-ml-1 inline-flex size-9 items-center justify-center rounded-md text-ink-2 hover:bg-subtle lg:hidden"
         onClick={() => setMobileOpen(true)}
-        aria-label="Open navigation"
+        aria-label="Open navigation" title="Open navigation"
       >
         <MenuIcon className="size-5" />
       </button>
@@ -44,7 +44,7 @@ export function Topbar() {
         <button
           onClick={openCommandMenu}
           className="inline-flex size-9 items-center justify-center rounded-md text-ink-2 hover:bg-subtle lg:hidden"
-          aria-label="Search"
+          aria-label="Search" title="Search"
         >
           <Search className="size-[18px]" />
         </button>
@@ -74,6 +74,7 @@ function MobileNav({ onClose }: { onClose: () => void }) {
 }
 
 function Notifications() {
+  const company = useCompany();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const { state } = useStore();
@@ -134,7 +135,7 @@ function Notifications() {
           "relative inline-flex size-9 items-center justify-center rounded-md text-ink-2 transition-colors hover:bg-subtle",
           open && "bg-subtle",
         )}
-        aria-label="Notifications"
+        aria-label="Notifications" title="Notifications"
       >
         <Bell className="size-[18px]" />
         {unread > 0 && <span className="absolute top-2 right-2 size-2 rounded-full bg-brand ring-2 ring-canvas" />}

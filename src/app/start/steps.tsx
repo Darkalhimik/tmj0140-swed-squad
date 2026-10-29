@@ -36,6 +36,7 @@ import {
   countryOptions,
   emtak,
   registryLookup,
+  effectivePreset,
   STATE_FEE,
   turnoverBands,
   VAT_THRESHOLD,
@@ -58,18 +59,30 @@ function Fieldset({
   children,
   footer,
   className,
+  error,
 }: {
   title: ReactNode;
   description?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
   className?: string;
+  /** Shown (with a red outline) once the user has tried to continue. */
+  error?: string | false;
 }) {
   return (
-    <section className={cn("rounded-xl bg-surface shadow-card", className)}>
+    <section
+      data-invalid={error ? "true" : undefined}
+      className={cn("rounded-xl bg-surface", error ? "shadow-[0_0_0_1.5px_var(--color-danger)]" : "shadow-card", className)}
+    >
       <div className="p-5 sm:p-6">
         <h2 className="text-[15px] font-semibold tracking-[-0.01em]">{title}</h2>
         {description && <p className="mt-0.5 text-[13px] text-ink-3">{description}</p>}
+        {error && (
+          <p className="mt-2 flex items-center gap-1.5 text-[13px] font-medium text-danger">
+            <CircleAlert className="size-4 shrink-0" />
+            {error}
+          </p>
+        )}
         <div className="mt-4">{children}</div>
       </div>
       {footer && <div className="rounded-b-xl border-t border-line bg-canvas px-5 py-3 text-[13px] text-ink-3 sm:px-6">{footer}</div>}
@@ -83,6 +96,7 @@ const stack = "flex flex-col gap-5";
 
 export function CompanyStep() {
   const { f, set } = useFormation();
+  const show = f.attempted.includes("company");
   const [checking, setChecking] = useState(false);
   const [query, setQuery] = useState("");
   const timer = useRef<number | undefined>(undefined);
@@ -99,12 +113,13 @@ export function CompanyStep() {
       <Fieldset
         title="Company name"
         description="We check it against the e-Business Register as you type."
-        footer="The name must end in “OÜ”. You can reserve a name for 6 months for €150 if you're not ready yet."
+        footer="The name must include “OÜ” (or “osaühing”). Not ready to register? You can reserve a name for up to 6 months for a €150 state fee."
       >
         <Input
           size="lg"
           placeholder="e.g. Põhjatuul Labs"
           value={f.name}
+          aria-invalid={show && result.status !== "available" && result.status !== "similar" ? true : undefined}
           autoFocus
           suffix={<span className="text-[15px] font-medium text-ink-2">OÜ</span>}
           onChange={(e) => {
@@ -114,8 +129,14 @@ export function CompanyStep() {
             timer.current = window.setTimeout(() => setChecking(false), 450);
           }}
         />
-        {result.status !== "empty" && (
-          <div className="mt-3 flex items-start gap-2 text-[13px]">
+        {/* Fixed height: the check result never pushes the rest of the page down. */}
+        <div className="mt-3 h-11 overflow-hidden">
+        {result.status === "empty" ? (
+          <p className={cn("text-[13px]", show ? "font-medium text-danger" : "text-ink-3")}>
+            {show ? "Enter a company name." : "Type a name to check it against the register."}
+          </p>
+        ) : (
+          <div className="flex items-start gap-2 text-[13px]">
             {checking ? (
               <>
                 <Spinner className="mt-0.5 size-3.5 text-ink-3" />
@@ -130,21 +151,19 @@ export function CompanyStep() {
                   <p className={cn(result.status === "available" ? "text-success" : result.status === "similar" ? "text-warning" : "text-danger")}>
                     {result.message}
                   </p>
-                  {result.similar.length > 0 && (
-                    <p className="mt-1 text-ink-3">
-                      Similar: {result.similar.map((s) => <span key={s} className="mr-1.5 rounded bg-subtle px-1.5 py-0.5 text-ink-2">{s}</span>)}
-                    </p>
-                  )}
+                  {result.similar.length > 0 && <p className="mt-0.5 truncate text-ink-3">Similar: {result.similar.join(", ")}</p>}
                 </div>
               </>
             )}
           </div>
         )}
+        </div>
       </Fieldset>
 
       <Fieldset
         title="Principal activity"
         description="Pick the one activity that brings in most of your income (EMTAK)."
+        error={show && !f.emtak && "Pick a principal activity."}
         footer="Only one principal activity is registered at founding. Other activities are reported in your annual report."
       >
         {f.emtak ? (
@@ -186,6 +205,7 @@ export function CompanyStep() {
       <Fieldset
         title="What will the company do?"
         description="A few sentences in your own words."
+        error={show && f.description.trim().length < 40 && `Write at least 40 characters (${f.description.trim().length} so far).`}
         footer="Why we ask: banks must understand how an account will be used (anti-money-laundering law). Clear answers mean no follow-up calls."
       >
         <Textarea
@@ -208,6 +228,7 @@ const SHARE_COLORS = ["#512b2b", "#ff5f00", "#31a3ae", "#fdc92a", "#990066"];
 
 export function PeopleStep() {
   const { f, set } = useFormation();
+  const show = f.attempted.includes("people");
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState({ name: "", idCode: "", email: "", residency: "Estonian resident" as Founder["residency"] });
   const total = f.founders.reduce((s, p) => s + (Number(p.share) || 0), 0);
@@ -217,7 +238,11 @@ export function PeopleStep() {
 
   return (
     <div className={stack}>
-      <Fieldset title="Founders" description="Everyone who will own shares. Each person signs the application digitally.">
+      <Fieldset
+        title="Founders"
+        description="Everyone who will own shares. Each person signs the application digitally."
+        error={show && !f.founders.some((p) => p.board) && "At least one founder must be a board member."}
+      >
         <ul className="flex flex-col divide-y divide-line">
           {f.founders.map((p) => (
             <li key={p.id} className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center">
@@ -329,12 +354,28 @@ export function PeopleStep() {
         )}
       </Fieldset>
 
-      <Fieldset title="Ownership" description="Shares must add up to 100%.">
-        <StackBar
-          className="h-2.5"
-          parts={f.founders.map((p, i) => ({ label: p.id, value: p.share, color: SHARE_COLORS[i % SHARE_COLORS.length]! }))
-            .concat(total < 100 ? [{ label: "free", value: 100 - total, color: "var(--color-muted)" }] : [])}
-        />
+      <Fieldset
+        title="Ownership"
+        description="Shares must add up to 100%."
+        error={(show || total > 100) && Math.abs(total - 100) >= 0.001 && `Shares add up to ${total}%, not 100%.`}
+      >
+        <div className="relative">
+          {/* Scaled to the real total: over 100% the bar overflows past the 100% mark. */}
+          <StackBar
+            className="h-2.5"
+            parts={f.founders
+              .map((p, i) => ({ label: p.id, value: p.share, color: SHARE_COLORS[i % SHARE_COLORS.length]! }))
+              .concat(total < 100 ? [{ label: "free", value: 100 - total, color: "var(--color-muted)" }] : [])}
+          />
+          {total > 100 && (
+            <span
+              className="absolute -top-1 -bottom-1 w-0.5 rounded bg-danger"
+              style={{ left: `${(100 / total) * 100}%` }}
+              title="100%"
+              aria-hidden
+            />
+          )}
+        </div>
         <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px]">
           {f.founders.map((p, i) => (
             <span key={p.id} className="flex items-center gap-1.5 text-ink-2">
@@ -349,8 +390,10 @@ export function PeopleStep() {
         <div className="mt-4 flex items-start gap-2 rounded-lg bg-subtle px-3.5 py-3 text-[13px] text-ink-2">
           <UserRound className="mt-0.5 size-4 shrink-0 text-ink-3" />
           <span>
-            <span className="font-medium text-ink">Beneficial owners</span> are declared automatically:{" "}
-            {owners.length ? owners.map((o) => `${o.name} (${o.share}%)`).join(", ") : "nobody owns 25% or more yet"}.
+            <span className="font-medium text-ink">Beneficial owners</span>{" "}
+            {Math.abs(total - 100) >= 0.001
+              ? "are worked out once the shares add up to 100%."
+              : `are declared automatically: ${owners.length ? owners.map((o) => `${o.name} (${o.share}%)`).join(", ") : "nobody owns 25% or more"}.`}
           </span>
         </div>
       </Fieldset>
@@ -509,8 +552,10 @@ function ToggleRow({ title, body, checked, onChange }: { title: string; body: st
 
 function KycQuestions() {
   const { f, set } = useFormation();
+  const show = f.attempted.includes("account") || f.attempted.includes("activity");
   return (
     <Fieldset
+      error={show && !f.turnover && "Choose how much money you expect in a year."}
       title="Expected activity"
       description="Rough numbers are fine. You can update them any time."
       footer="Why we ask: the law requires us to know how business accounts are used. This replaces the separate questionnaire."
@@ -546,6 +591,7 @@ function KycQuestions() {
 
 export function AccountStep() {
   const { f, set } = useFormation();
+  const boardCount = f.mode === "existing" ? 1 : f.founders.filter((p) => p.board).length;
   const others = f.mode === "new" ? f.founders.filter((p) => !p.you && p.board) : [];
 
   return (
@@ -592,20 +638,36 @@ export function AccountStep() {
         </Fieldset>
       )}
 
-      <Fieldset title="Payment approvals" description="Applies to every outgoing payment. Nobody can approve their own payment.">
+      <Fieldset
+        title="Payment approvals"
+        description={
+          boardCount < 2
+            ? "You're the only board member, so your Smart-ID signature approves each payment."
+            : "Applies to every outgoing payment. Whoever creates a payment can't also approve it."
+        }
+      >
         <Choicebox<Formation["approvalPreset"]>
           columns={1}
-          value={f.approvalPreset}
+          value={effectivePreset(f)}
           onChange={(v) => set({ approvalPreset: v })}
           items={[
-            { value: "single", title: "One board member approves", description: "Fastest. Good for a single-founder company." },
+            {
+              value: "single",
+              title: "One signature per payment",
+              description: boardCount < 2 ? "Your signature is the approval. Add a second board member later to require two." : "Any board member approves.",
+            },
             {
               value: "second",
               title: "Second approval above €10,000",
-              description: "Everyday payments need one approval, large ones need two.",
-              meta: <Badge size="xs" tone="success">Recommended</Badge>,
+              description: boardCount < 2 ? "Needs a second board member." : "Everyday payments need one approval, large ones need two.",
+              disabled: boardCount < 2,
             },
-            { value: "always", title: "Always two approvals", description: "Every payment is approved by two board members." },
+            {
+              value: "always",
+              title: "Always two approvals",
+              description: boardCount < 2 ? "Needs a second board member." : "Every payment is approved by two board members.",
+              disabled: boardCount < 2,
+            },
           ]}
         />
       </Fieldset>
@@ -738,7 +800,11 @@ export function ActivityStep() {
   const { f, set } = useFormation();
   return (
     <div className={stack}>
-      <Fieldset title="What does the company do?" description="Pre-filled activity: 74102 — Graphic design. Describe it in your own words.">
+      <Fieldset
+        title="What does the company do?"
+        description="Pre-filled activity: 74102 — Graphic design. Describe it in your own words."
+        error={f.attempted.includes("activity") && f.description.trim().length < 40 && "Write at least 40 characters."}
+      >
         <Textarea
           rows={4}
           placeholder="e.g. Brand identities and packaging design for food producers in Estonia and Finland."
@@ -758,6 +824,7 @@ export function ActivityStep() {
 
 export function ReviewStep({ onEdit }: { onEdit: (id: string) => void }) {
   const { f, set } = useFormation();
+  const yourMethod = useStore().state.session.method;
   const [signing, setSigning] = useState(false);
   const isNew = f.mode === "new";
   const company = registryLookup[f.existingCode];
@@ -815,7 +882,7 @@ export function ReviewStep({ onEdit }: { onEdit: (id: string) => void }) {
             </ReviewRow>
           )}
           <ReviewRow title="Business account" onEdit={() => onEdit("account")}>
-            {f.approvalPreset === "single" ? "One approval per payment" : f.approvalPreset === "second" ? "Second approval above €10,000" : "Always two approvals"}
+            {effectivePreset(f) === "single" ? "One signature per payment" : effectivePreset(f) === "second" ? "Second approval above €10,000" : "Always two approvals"}
             {f.cards ? ` · ${boardCount} virtual card${boardCount > 1 ? "s" : ""}` : ""}
             {f.accounting !== "later" ? ` · ${f.accounting === "merit" ? "Merit Aktiva" : f.accounting === "smartaccounts" ? "SmartAccounts" : "Directo"}` : ""}
           </ReviewRow>
@@ -838,7 +905,7 @@ export function ReviewStep({ onEdit }: { onEdit: (id: string) => void }) {
               : []),
           ]}
           total={{ label: "Due today", value: money(isNew ? STATE_FEE : 0) }}
-          arrival={isNew ? "Paid from Everyday account ••5685 when you submit · registration usually completes the same working day" : "Most applications are approved within minutes"}
+          arrival={isNew ? "Paid from Everyday account ••5685 when you submit · the registrar usually decides within one working day" : "We tell you if we need anything else"}
         />
       </Fieldset>
 
@@ -860,9 +927,9 @@ export function ReviewStep({ onEdit }: { onEdit: (id: string) => void }) {
                   </p>
                   <p className="text-[12px] text-ink-3">
                     {done
-                      ? `Signed with ${p.residency === "e-Resident" ? "e-Residency card" : "Smart-ID"} · ${fmtTime(NOW.toISOString())}`
+                      ? `Signed with ${p.you ? yourMethod : p.residency === "e-Resident" ? "e-Residency card" : "Smart-ID"} · ${fmtTime(NOW.toISOString())}`
                       : p.you
-                        ? "Signs with Smart-ID"
+                        ? `Signs with ${yourMethod}`
                         : waiting
                           ? `Request sent to their Smart-ID app and ${p.email}`
                           : "Gets a signing request after you sign"}

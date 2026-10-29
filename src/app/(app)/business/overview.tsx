@@ -6,17 +6,14 @@ import { useState, type ReactNode } from "react";
 import { AccountDetailsModal, MoveMoneyModal } from "@/components/banking/account-modals";
 import { StatementExportModal } from "@/components/banking/transparency";
 import { TxnDrawer, TxnRow } from "@/components/banking/txn";
-import { RecentActivity } from "@/components/business/overview-activity";
 import { PageContainer } from "@/components/shell/page-header";
 import { CompanyMark } from "@/components/shell/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { BarPairs } from "@/components/ui/chart";
-import { Meter } from "@/components/ui/meter";
 import { Money } from "@/components/ui/misc";
 import { useToast } from "@/components/ui/toast";
-import { cashflow, company, companyLimits } from "@/lib/data/business";
 import { cn } from "@/lib/cn";
 import { fmtDate, iban as fmtIban, money, moneyParts, relative } from "@/lib/format";
 import { CURRENT_MEMBER, useStore } from "@/lib/store";
@@ -27,7 +24,8 @@ type Attention = { id: string; icon: ReactNode; tone: string; title: string; bod
 export function BusinessOverview() {
   const { state, dispatch } = useStore();
   const toast = useToast();
-  const { accounts, payments, cards, txns, invites, members, audit } = state.business;
+  const { accounts, payments, cards, txns, invites, members, profile: company, cashflow } = state.business;
+  const octScheduled = payments.filter((p) => p.status === "scheduled" && p.executeAt.startsWith("2026-10")).reduce((s, p) => s + p.amount, 0);
   const [modal, setModal] = useState<"move" | "details" | "statement" | null>(null);
   const [openTxn, setOpenTxn] = useState<Txn | null>(null);
 
@@ -104,14 +102,19 @@ export function BusinessOverview() {
         <div className="flex items-center gap-3.5">
           <CompanyMark size="lg" />
           <div className="min-w-0">
-            <h1 className="truncate text-[26px] leading-8 font-semibold tracking-[-0.035em]">{company.name}</h1>
+            <h1 className="truncate text-[26px] leading-8 font-semibold tracking-[-0.015em]">{company.name}</h1>
             <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[13px] text-ink-3">
               <span>
                 Registry code <span className="font-mono text-ink-2">{company.registryCode}</span>
               </span>
               <span className="text-ink-4">·</span>
               <span>
-                VAT <span className="font-mono text-ink-2">{company.vat}</span>
+                VAT{" "}
+                {company.vat && company.vat.startsWith("EE") ? (
+                  <span className="font-mono text-ink-2">{company.vat}</span>
+                ) : (
+                  <span className="text-ink-3">{company.vat === "Requested" ? "requested" : "not registered"}</span>
+                )}
               </span>
               <Badge tone="brown" size="xs">
                 Owner
@@ -133,12 +136,13 @@ export function BusinessOverview() {
         <Card>
           <div className="flex flex-col gap-1 px-5 pt-5">
             <p className="text-[13px] text-ink-3">Total across {accounts.length} accounts</p>
-            <p className="tabular text-[40px] leading-[44px] font-semibold tracking-[-0.045em]">
+            <p className="tabular text-[40px] leading-[44px] font-semibold tracking-[-0.015em]">
               {parts.whole}
               <span className="text-[0.55em] tracking-[-0.02em] text-ink-3">{parts.cents}</span>
             </p>
             <p className="text-[13px] text-ink-3">
-              October: <span className="text-success">+{money(oct.a)} in</span> · <span className="text-ink-2">−{money(oct.b)} out</span>
+              October: <span className="text-success">+{money(oct.a)} in</span> · <span className="text-ink-2">−{money(oct.b)} out</span>{" "}
+              <span className="text-ink-4">(payments, cards and fees)</span>
             </p>
           </div>
           <ul className="mt-4 border-t border-line">
@@ -182,77 +186,7 @@ export function BusinessOverview() {
         </Card>
       </div>
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <Card>
-          <CardHeader
-            title="Cash flow"
-            description="Last 6 months"
-            action={
-              <span className="flex items-center gap-3 text-[12px] text-ink-3">
-                <span className="flex items-center gap-1.5">
-                  <span className="size-2 rounded-sm bg-brown" />
-                  Money in
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="size-2 rounded-sm bg-brand/70" />
-                  Money out
-                </span>
-              </span>
-            }
-          />
-          <div className="px-5 pb-5">
-            <BarPairs data={cashflow} height={160} />
-            <div className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-3 text-[13px]">
-              <div>
-                <p className="text-ink-3">In · Oct</p>
-                <Money value={oct.a} className="font-medium" />
-              </div>
-              <div>
-                <p className="text-ink-3">Out · Oct</p>
-                <Money value={oct.b} className="font-medium" />
-              </div>
-              <div>
-                <p className="text-ink-3">Net · Oct</p>
-                <Money value={oct.a - oct.b} sign className="font-medium text-success" />
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <CardHeader
-            title="Company limits"
-            description="Shared by everyone who can pay"
-            action={
-              <Link href="/business/payments" className="text-[13px] font-medium text-teal hover:underline">
-                Rules
-              </Link>
-            }
-          />
-          <div className="flex flex-col gap-4 px-5 pb-5">
-            {[
-              { label: "Payments today", ...companyLimits.daily },
-              { label: "Payments this month", ...companyLimits.monthly },
-              { label: "Instant payments today", ...companyLimits.instantDaily },
-            ].map((l) => (
-              <div key={l.label}>
-                <div className="mb-1.5 flex items-baseline justify-between gap-2 text-[13px]">
-                  <span className="text-ink-2">{l.label}</span>
-                  <span className="tabular text-ink-3">
-                    {money(l.used)} <span className="text-ink-4">/ {money(l.max)}</span>
-                  </span>
-                </div>
-                <Meter value={l.used} max={l.max} />
-              </div>
-            ))}
-            <p className="text-[12px] text-ink-3">
-              Above {money(companyLimits.secondApprovalFrom)} a payment always needs a second approver.
-            </p>
-          </div>
-        </Card>
-      </div>
-
-      <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
         <Card>
           <CardHeader
             title="Transactions"
@@ -271,18 +205,43 @@ export function BusinessOverview() {
         </Card>
         <Card>
           <CardHeader
-            title="Recent activity"
-            description="Every change, by whom"
+            title="Cash flow"
+            description={cashflow.length === 1 ? "Since the account opened" : `Last ${cashflow.length} months`}
             action={
-              <Link href="/business/activity" className="text-[13px] font-medium text-teal hover:underline">
-                View all
-              </Link>
+              <span className="flex items-center gap-3 text-[12px] text-ink-3">
+                <span className="flex items-center gap-1.5">
+                  <span className="size-2 rounded-sm bg-brown" />
+                  Money in
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="size-2 rounded-sm bg-brand/70" />
+                  Money out
+                </span>
+              </span>
             }
           />
-          <div className="px-2 pb-3">
-            <RecentActivity events={audit.slice(0, 5)} members={members} />
+          <div className="px-5 pb-5">
+            <BarPairs data={cashflow} height={150} />
+            <div className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-3 text-[13px]">
+              <div>
+                <p className="text-ink-3">In · Oct</p>
+                <Money value={oct.a} className="font-medium" />
+              </div>
+              <div>
+                <p className="text-ink-3" title="Payments, card spending and fees">Out · Oct</p>
+                <Money value={oct.b} className="font-medium" />
+              </div>
+              <div>
+                <p className="text-ink-3">Net · Oct</p>
+                <Money value={oct.a - oct.b} sign className="font-medium text-success" />
+              </div>
+            </div>
+            {octScheduled > 0 && (
+              <p className="mt-3 text-[12px] text-ink-3">October so far. {money(octScheduled)} more is scheduled before the month ends (e.g. salaries).</p>
+            )}
           </div>
         </Card>
+
       </div>
 
       <AccountDetailsModal account={main} holder={company.name} open={modal === "details"} onClose={() => setModal(null)} />

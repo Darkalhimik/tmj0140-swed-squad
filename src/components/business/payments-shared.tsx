@@ -1,4 +1,4 @@
-import { businessAllowances } from "@/lib/data/pricing";
+import type { Allowance } from "@/lib/data/pricing";
 import { fmtDateTime } from "@/lib/format";
 import type { ApprovalRule, BizPayment, Member, PaymentStatus } from "@/lib/types";
 import type { Status } from "@/components/ui/status-dot";
@@ -73,9 +73,14 @@ export function eligibleApprovers(p: Pick<BizPayment, "ruleId" | "createdBy" | "
   );
 }
 
-/** Free euro payments this month (412 already used). */
-export function freePaymentsUsed(extra = 0) {
-  const a = businessAllowances.find((x) => x.key === "payments");
+/** True when nobody but the current user can approve payments (e.g. a one-founder company). */
+export function isSoleSignatory(members: Member[], me: string) {
+  return !members.some((m) => m.id !== me && m.status === "active" && (m.board || m.role === "owner" || m.role === "admin"));
+}
+
+/** Free euro payments this month for the active company. */
+export function freePaymentsUsed(allowances: Allowance[], extra = 0) {
+  const a = allowances.find((x) => x.key === "payments");
   return { used: (a?.used ?? 412) + extra, included: a?.included ?? 1000 };
 }
 
@@ -129,7 +134,7 @@ export function paymentTimeline(p: BizPayment, members: Member[], rules: Approva
     label: "Received by the beneficiary's bank",
     at: p.scheme === "SEPA Instant" ? p.executeAt : new Date(new Date(p.executeAt).getTime() + 5 * 3600_000).toISOString(),
     state: "done",
-    note: p.scheme === "SEPA Instant" ? "Arrived in 4 seconds" : undefined,
+    note: p.scheme === "SEPA Instant" ? "SEPA Instant" : undefined,
   });
   return steps;
 }

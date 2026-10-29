@@ -43,6 +43,16 @@ const merchants: Record<string, MerchantStyle> = {
   "Merit Tarkvara AS": { bg: "#ff5b35", fg: "#fff", mark: "M" },
   "Arcticwave Ltd": { bg: "#123b55", fg: "#bfe6ff", mark: "AW" },
   "Hepta Group OÜ": { bg: "#f1ecfb", fg: "#5a3aa8", mark: "H" },
+  "Apple Eesti": { bg: "#1d1d1f", fg: "#fff", mark: "A" },
+  Adobe: { bg: "#fa0f00", fg: "#fff", mark: "A" },
+  "Tallinn Print OÜ": { bg: "#e2efd9", fg: "#3b6f22", mark: "TP" },
+  Lufthansa: { bg: "#05164d", fg: "#ffad00", mark: "LH" },
+  "Hotel Telegraaf": { bg: "#2b2b2b", fg: "#d8c08a", mark: "HT" },
+  Euronics: { bg: "#1b3f94", fg: "#ffde00", mark: "E" },
+  "Radisson Blu": { bg: "#00205b", fg: "#fff", mark: "RB" },
+  Lounaspea: { bg: "#fde3cf", fg: "#9a4410", mark: "L" },
+  Slack: { bg: "#4a154b", fg: "#fff", mark: "S" },
+  "Ministry of Finance (RIK)": { bg: "#0072ce", fg: "#fff", mark: "RIK" },
 };
 
 export function merchantStyle(name: string): MerchantStyle {
@@ -61,6 +71,7 @@ export const categoryMeta: Record<Category, { label: string; color: string }> = 
   transfers: { label: "Transfers", color: "#8a7a70" },
   savings: { label: "Savings", color: "#512b2b" },
   fees: { label: "Bank fees", color: "#a89a90" },
+  cash: { label: "Cash", color: "#85696a" },
   software: { label: "Software & SaaS", color: "#6d4bc4" },
   office: { label: "Office & rent", color: "#8a5a3c" },
   salaries: { label: "Salaries", color: "#512b2b" },

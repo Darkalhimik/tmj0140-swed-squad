@@ -7,9 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StatusDot } from "@/components/ui/status-dot";
 import { useToast } from "@/components/ui/toast";
-import { company } from "@/lib/data/business";
 import { fmtDate, NOW } from "@/lib/format";
-import { useStore } from "@/lib/store";
+import { useCompany, useStore } from "@/lib/store";
 import { SettingsSection } from "./settings-shared";
 
 const HELD = [
@@ -27,6 +26,7 @@ function monthsUntil(iso: string) {
 }
 
 export function KycSection() {
+  const company = useCompany();
   const { dispatch } = useStore();
   const toast = useToast();
   const [signing, setSigning] = useState(false);

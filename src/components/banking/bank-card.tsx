@@ -49,7 +49,7 @@ export function BankCard({
           <div className="flex items-start justify-between">
             <span className="flex items-center gap-1.5">
               <OakMark mono className="size-5" />
-              <span className="text-[15px] font-semibold tracking-[-0.03em]">Swedbank</span>
+              <span className="text-[15px] font-semibold tracking-[-0.015em]">Swedbank</span>
             </span>
             <span className="text-[11px] font-medium tracking-wide uppercase opacity-80">
               {card.kind === "virtual" ? "Virtual" : card.kind === "credit" ? "Credit" : "Debit"}

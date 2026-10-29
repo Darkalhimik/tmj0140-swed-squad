@@ -1,7 +1,8 @@
 "use client";
 
 import { Check, ChevronDown, Download, Search, SearchX, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { TxnDrawer, TxnRow } from "@/components/banking/txn";
 import { StatementExportModal } from "@/components/banking/transparency";
 import { PageContainer, PageHeader } from "@/components/shell/page-header";
@@ -45,7 +46,8 @@ export function Transactions() {
   const [openTxn, setOpenTxn] = useState<Txn | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
 
-  const counted = txns.filter((t) => t.status !== "declined" && t.status !== "refunded");
+  // A refunded purchase and its refund cancel out, so neither counts towards the month.
+  const counted = txns.filter((t) => t.status !== "declined" && t.status !== "refunded" && !t.refundOf);
   const moneyIn = counted.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0);
   const moneyOut = counted.filter((t) => t.amount < 0).reduce((s, t) => s + t.amount, 0);
   const pendingCount = txns.filter((t) => t.status === "pending").length;
@@ -78,6 +80,9 @@ export function Transactions() {
 
   return (
     <PageContainer>
+      <Suspense fallback={null}>
+        <QueryParam onQuery={setQuery} />
+      </Suspense>
       <PageHeader
         title="Transactions"
         description={
@@ -98,7 +103,7 @@ export function Transactions() {
         <Stat
           label="Money out · October"
           value={<Money value={moneyOut} />}
-          note={`Excludes ${plural(declinedCount, "declined payment")} and ${refundedCount} refunded`}
+          note={`Excludes ${plural(declinedCount, "declined payment")} and ${refundedCount} refunded purchase (−€89.00, refunded +€89.00)`}
         />
         <Stat
           label="Net this month"
@@ -226,8 +231,21 @@ function Stat({ label, value, note }: { label: string; value: React.ReactNode; n
   return (
     <div className="px-5 py-4">
       <p className="text-[13px] text-ink-3">{label}</p>
-      <p className="mt-1 text-[22px] font-semibold tracking-[-0.03em]">{value}</p>
+      <p className="font-display mt-1 text-[22px] font-semibold tracking-[-0.015em]">{value}</p>
       <p className="mt-0.5 text-[12px] text-ink-4">{note}</p>
     </div>
   );
+}
+
+/** `?q=` from the command menu pre-fills the search, then clears itself from the URL. */
+function QueryParam({ onQuery }: { onQuery: (q: string) => void }) {
+  const params = useSearchParams();
+  const router = useRouter();
+  const q = params.get("q");
+  useEffect(() => {
+    if (!q) return;
+    onQuery(q);
+    router.replace("/personal/transactions", { scroll: false });
+  }, [q, onQuery, router]);
+  return null;
 }

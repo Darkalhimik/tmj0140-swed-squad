@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { Tooltip } from "./misc";
 import { Spinner } from "./spinner";
 
 type Variant = "primary" | "brand" | "secondary" | "tertiary" | "danger" | "danger-soft";
@@ -16,10 +17,10 @@ const variants: Record<Variant, string> = {
 };
 
 const sizes: Record<Size, string> = {
-  xs: "h-7 px-2 text-[12px] gap-1 rounded-sm",
-  sm: "h-8 px-3 text-[13px] gap-1.5 rounded-md",
-  md: "h-9 px-3.5 text-sm gap-2 rounded-md",
-  lg: "h-11 px-5 text-[15px] gap-2 rounded-lg",
+  xs: "h-7 px-2.5 text-[12px] gap-1 rounded-full",
+  sm: "h-8 px-3.5 text-[13px] gap-1.5 rounded-full",
+  md: "h-9 px-4 text-sm gap-2 rounded-full",
+  lg: "h-11 px-5 text-[15px] gap-2 rounded-full",
 };
 
 const iconOnly: Record<Size, string> = {
@@ -70,7 +71,7 @@ export function Button({
   type = "button",
   ...rest
 }: Common & ComponentProps<"button">) {
-  return (
+  const button = (
     <button
       type={type}
       disabled={disabled || loading}
@@ -82,6 +83,9 @@ export function Button({
       {trailing}
     </button>
   );
+  // Icon-only buttons show their label on hover/focus, not just to screen readers.
+  const label = rest["aria-label"];
+  return icon && label ? <Tooltip content={label}>{button}</Tooltip> : button;
 }
 
 export function ButtonLink({

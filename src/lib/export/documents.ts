@@ -1,6 +1,9 @@
 "use client";
 
-import { businessAccounts, company } from "@/lib/data/business";
+import type { CompanyProfile } from "@/lib/types";
+
+/** The company a business document is issued for, with its main account. */
+export type DocCompany = Pick<CompanyProfile, "name" | "address" | "registryCode"> & { iban: string };
 import { person, personalAccounts } from "@/lib/data/personal";
 import { fmtDate, NOW } from "@/lib/format";
 import type { BizPayment, Txn } from "@/lib/types";
@@ -35,10 +38,10 @@ const SCHEME: Partial<Record<Txn["method"], string>> = {
 };
 
 /** Confirmation for any transaction opened in the transaction drawer. */
-export async function downloadTxnConfirmation(txn: Txn) {
-  const business = txn.accountId.startsWith("b-");
-  const account = (business ? businessAccounts : personalAccounts).find((a) => a.id === txn.accountId)!;
-  const owner = business ? company.name : person.name;
+export async function downloadTxnConfirmation(txn: Txn, company?: DocCompany) {
+  const business = txn.accountId.startsWith("b-") && !!company;
+  const account = business ? { iban: company!.iban } : personalAccounts.find((a) => a.id === txn.accountId)!;
+  const owner = business ? company!.name : person.name;
   const incoming = txn.amount > 0;
   const other = { name: txn.counterparty, iban: txn.iban ?? "—", bank: txn.iban ? bankOf(txn.iban) : txn.method === "card" ? "Card network" : undefined };
   const self = { name: owner, iban: account.iban };
@@ -62,7 +65,7 @@ export async function downloadTxnConfirmation(txn: Txn) {
 }
 
 /** Confirmation for a business payment, including its approval trail. */
-export async function downloadBizPaymentConfirmation(p: BizPayment, nameOf: (id: string) => string) {
+export async function downloadBizPaymentConfirmation(p: BizPayment, nameOf: (id: string) => string, company: DocCompany) {
   const chain = [
     { label: `Created by ${nameOf(p.createdBy)}`, at: p.createdAt },
     ...p.approvals.map((a, i) => ({ label: `Approved by ${nameOf(a.memberId)} (${i + 1} of ${p.required}) · Smart-ID`, at: a.at })),
@@ -75,7 +78,7 @@ export async function downloadBizPaymentConfirmation(p: BizPayment, nameOf: (id:
     filename,
     id: p.id,
     status: { draft: "Draft", awaiting: "Waiting for approval", scheduled: "Scheduled", processing: "Processing", sent: "Executed", rejected: "Rejected", failed: "Returned" }[p.status],
-    payer: { name: company.name, iban: businessAccounts[0]!.iban },
+    payer: { name: company.name, iban: company.iban },
     beneficiary: { name: p.beneficiary, iban: p.iban, bank: p.bulk ? `${p.bulk} recipients` : bankOf(p.iban) },
     amount: p.amount,
     fee: p.fee,
@@ -121,7 +124,7 @@ export async function downloadPersonalPaymentConfirmation(o: {
 }
 
 /** The supplier invoice attached to a payment request. */
-export async function downloadInvoice(p: BizPayment) {
+export async function downloadInvoice(p: BizPayment, company: DocCompany) {
   const filename = p.attachment ?? `${p.id.toLowerCase()}-invoice.pdf`;
   const number = p.reference.match(/(?:invoice|order|arve)[\s-]*([\w-]+)/i)?.[1] ?? p.id.replace("PAY-", "");
   await invoicePdf({
@@ -139,14 +142,19 @@ export async function downloadInvoice(p: BizPayment) {
 }
 
 /** Itemised fee statement for one month (business has no package — usage only). */
-export async function downloadFeeStatement(inv: { id: string; period: string; amount: number; status: "upcoming" | "paid"; date: string }) {
-  const cards = 5;
+export async function downloadFeeStatement(
+  inv: { id: string; period: string; amount: number; status: "upcoming" | "paid"; date: string },
+  company: Pick<CompanyProfile, "name" | "registryCode">,
+  iban: string,
+  paymentsUsed = 0,
+) {
+  const cards = inv.amount >= 10 ? 5 : 0;
   let rest = Math.round((inv.amount - cards * 2) * 100) / 100;
   const swift = rest >= 6 ? 1 : 0;
   rest = Math.round((rest - swift * 6) * 100) / 100;
   const requests = Math.round(rest / 0.09);
   const lines = [
-    { label: "Euro payments — SEPA, instant, Swedbank (within 1,000 free)", qty: inv.status === "upcoming" ? "412" : "—", unit: "€0.00", amount: 0 },
+    { label: "Euro payments — SEPA, instant, Swedbank (within 1,000 free)", qty: inv.status === "upcoming" ? String(paymentsUsed) : "—", unit: "€0.00", amount: 0 },
     { label: "Business debit cards", qty: String(cards), unit: "€2.00", amount: cards * 2 },
     ...(swift ? [{ label: "International payment (SWIFT, SHA)", qty: String(swift), unit: "€6.00", amount: swift * 6 }] : []),
     ...(requests ? [{ label: "Money requests (link or QR)", qty: String(requests), unit: "€0.09", amount: Math.round(requests * 9) / 100 }] : []),
@@ -160,7 +168,7 @@ export async function downloadFeeStatement(inv: { id: string; period: string; am
     period: inv.period,
     status: inv.status === "upcoming" ? "estimate — final amount on 1 Nov" : "charged",
     chargeDate: `${inv.date}T09:00:00+02:00`,
-    account: `Main account · ${businessAccounts[0]!.iban.slice(-4)}`,
+    account: `Main account · ${iban.slice(-4)}`,
     lines,
     total: inv.amount,
     note:

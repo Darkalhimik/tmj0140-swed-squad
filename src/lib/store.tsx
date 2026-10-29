@@ -8,12 +8,29 @@ import {
   businessCards,
   businessPayments,
   businessTxns,
+  cashflow,
+  company,
+  companyLimits,
   invites as seedInvites,
   members as seedMembers,
 } from "@/lib/data/business";
+import { buildCompanyFromFormation } from "@/lib/data/new-company";
 import { personalAccounts, personalCards, personalTxns } from "@/lib/data/personal";
+import { businessAllowances, businessFeeHistory, businessInvoices, type Allowance } from "@/lib/data/pricing";
 import { NOW } from "@/lib/format";
-import type { Account, ApprovalRule, AuditEvent, BizPayment, Card, Invite, Member, RoleId, Txn } from "@/lib/types";
+import type {
+  Account,
+  ApprovalRule,
+  AuditEvent,
+  BizPayment,
+  Card,
+  CompanyLimits,
+  CompanyProfile,
+  Invite,
+  Member,
+  RoleId,
+  Txn,
+} from "@/lib/types";
 
 export const CURRENT_MEMBER = "m-mari";
 const NOW_ISO = NOW.toISOString();
@@ -55,6 +72,8 @@ export type Formation = {
   accounting: "merit" | "smartaccounts" | "directo" | "later";
   signed: string[];
   furthest: number;
+  /** Steps where Continue was pressed — their invalid fields are highlighted. */
+  attempted: string[];
 };
 
 const initialFormation: Formation = {
@@ -100,31 +119,54 @@ const initialFormation: Formation = {
   cards: true,
   coFounderRole: "admin",
   approvalPreset: "second",
-  accounting: "merit",
+  accounting: "later",
   signed: [],
   furthest: 0,
+  attempted: [],
 };
+
+/** Everything the bank holds for one company. `state.business` is the active one. */
+export type BusinessData = {
+  profile: CompanyProfile;
+  accounts: Account[];
+  txns: Txn[];
+  cards: Card[];
+  payments: BizPayment[];
+  members: Member[];
+  invites: Invite[];
+  rules: ApprovalRule[];
+  audit: AuditEvent[];
+  limits: CompanyLimits;
+  cashflow: { label: string; a: number; b: number }[];
+  allowances: Allowance[];
+  feeHistory: { label: string; value: number }[];
+  invoices: { id: string; period: string; amount: number; status: "upcoming" | "paid"; date: string }[];
+};
+
+export type SignInMethod = "Smart-ID" | "Mobile-ID" | "ID-card";
 
 type State = {
   seq: number;
+  session: { method: SignInMethod };
   personal: { accounts: Account[]; txns: Txn[]; cards: Card[] };
-  business: {
-    accounts: Account[];
-    txns: Txn[];
-    cards: Card[];
-    payments: BizPayment[];
-    members: Member[];
-    invites: Invite[];
-    rules: ApprovalRule[];
-    audit: AuditEvent[];
-  };
+  business: BusinessData;
+  /** Other companies Mari can switch to (e.g. one registered in /start). */
+  otherBusinesses: BusinessData[];
   formation: Formation;
 };
 
 const initialState: State = {
   seq: 100,
+  session: { method: "Smart-ID" },
   personal: { accounts: personalAccounts, txns: personalTxns, cards: personalCards },
+  otherBusinesses: [],
   business: {
+    profile: company,
+    limits: companyLimits,
+    cashflow,
+    allowances: businessAllowances,
+    feeHistory: businessFeeHistory,
+    invoices: businessInvoices,
     accounts: businessAccounts,
     txns: businessTxns,
     cards: businessCards,
@@ -156,7 +198,12 @@ type Action =
   | { type: "move"; scope: "personal" | "business"; from: string; to: string; amount: number }
   | { type: "biz/approve"; id: string }
   | { type: "biz/reject"; id: string; reason: string }
-  | { type: "biz/createPayment"; payment: Omit<BizPayment, "id" | "createdAt" | "createdBy" | "approvals" | "status"> }
+  | {
+      type: "biz/createPayment";
+      payment: Omit<BizPayment, "id" | "createdAt" | "createdBy" | "approvals" | "status">;
+      /** The creator is the company's only signatory: their signature is the approval. */
+      signedAsSole?: boolean;
+    }
   | { type: "biz/invite"; emails: string[]; role: RoleId }
   | { type: "biz/revokeInvite"; id: string }
   | { type: "biz/resendInvite"; id: string }
@@ -168,11 +215,22 @@ type Action =
   | { type: "biz/issueCard"; memberId: string | null; name: string; limit: number }
   | { type: "biz/rule"; id: string; patch: Partial<ApprovalRule> }
   | { type: "biz/log"; action: string; target: string; detail?: string }
+  | { type: "biz/allowance"; allowance: Allowance }
   | { type: "formation/set"; patch: Partial<Formation> }
-  | { type: "formation/reset" };
+  | { type: "formation/reset" }
+  | { type: "formation/complete" }
+  | { type: "biz/switch"; id: string }
+  | { type: "session/set"; method: SignInMethod };
 
 function audit(state: State, action: string, target: string, detail?: string, actor = CURRENT_MEMBER): AuditEvent {
   return { id: `a-${state.seq}`, at: NOW_ISO, actor, action, target, detail, ip: "84.50.112.7", device: "Chrome · macOS" };
+}
+
+function switchTo(state: State, id: string): State {
+  if (state.business.profile.id === id) return state;
+  const target = state.otherBusinesses.find((b) => b.profile.id === id);
+  if (!target) return state;
+  return { ...state, business: target, otherBusinesses: [state.business, ...state.otherBusinesses.filter((b) => b !== target)] };
 }
 
 function memberName(state: State, id: string) {
@@ -335,7 +393,7 @@ function reducer(state: State, action: Action): State {
     }
     case "biz/approve": {
       const p = state.business.payments.find((x) => x.id === action.id);
-      if (!p || p.approvals.some((a) => a.memberId === CURRENT_MEMBER)) return state;
+      if (!p || p.createdBy === CURRENT_MEMBER || p.approvals.some((a) => a.memberId === CURRENT_MEMBER)) return state;
       const approvals = [...p.approvals, { memberId: CURRENT_MEMBER, at: NOW_ISO }];
       const done = approvals.length >= p.required;
       const next: BizPayment = { ...p, approvals, status: done ? "scheduled" : "awaiting" };
@@ -366,18 +424,51 @@ function reducer(state: State, action: Action): State {
     }
     case "biz/createPayment": {
       const id = `PAY-${2043 + state.business.payments.filter((p) => Number(p.id.slice(4)) >= 2043).length}`;
+      const sole = !!action.signedAsSole;
+      const now = action.payment.executeAt <= NOW_ISO;
       const p: BizPayment = {
         ...action.payment,
         id,
         createdAt: NOW_ISO,
         createdBy: CURRENT_MEMBER,
-        approvals: [],
-        status: "awaiting",
+        approvals: sole ? [{ memberId: CURRENT_MEMBER, at: NOW_ISO }] : [],
+        required: sole ? 1 : action.payment.required,
+        status: sole ? (now ? "sent" : "scheduled") : "awaiting",
+      };
+      const sent = sole && now;
+      const total = p.amount + p.fee;
+      const txn: Txn = {
+        id: `bt-${state.seq}`,
+        accountId: "b-main",
+        at: NOW_ISO,
+        counterparty: p.beneficiary,
+        amount: -total,
+        category: "services",
+        method: p.scheme === "SEPA Instant" ? "instant" : "sepa",
+        status: p.scheme === "SEPA Instant" ? "booked" : "pending",
+        iban: p.iban,
+        reference: p.reference,
+        fee: p.fee,
       };
       return withAudit(
         state,
-        { payments: [p, ...state.business.payments] },
-        audit(state, "payment.created", `${id} · ${p.beneficiary}`, money(p.amount)),
+        {
+          payments: [p, ...state.business.payments],
+          ...(sent
+            ? {
+                txns: [txn, ...state.business.txns],
+                accounts: state.business.accounts.map((a) =>
+                  a.id === "b-main" ? { ...a, balance: Math.round((a.balance - total) * 100) / 100 } : a,
+                ),
+              }
+            : {}),
+        },
+        audit(
+          state,
+          sole ? "payment.approved" : "payment.created",
+          `${id} · ${p.beneficiary}`,
+          sole ? `${money(p.amount)} · signed by the only signatory${sent ? " · sent" : " · scheduled"}` : money(p.amount),
+        ),
       );
     }
     case "biz/invite": {
@@ -504,10 +595,39 @@ function reducer(state: State, action: Action): State {
         audit(state, "rule.updated", r.name, Object.entries(action.patch).map(([k, v]) => `${k}: ${v}`).join(", ")),
       );
     }
+    case "biz/allowance": {
+      const rest = state.business.allowances.filter((a) => a.key !== action.allowance.key);
+      return { ...state, business: { ...state.business, allowances: [...rest, action.allowance] } };
+    }
     case "biz/log":
       return withAudit(state, {}, audit(state, action.action, action.target, action.detail));
     case "formation/set":
       return { ...state, formation: { ...state.formation, ...action.patch } };
+    case "formation/complete": {
+      const f = state.formation;
+      if (!f.submittedAt || !f.mode) return state;
+      const built = buildCompanyFromFormation(f, NOW_ISO);
+      const all = [state.business, ...state.otherBusinesses];
+      const existing = all.find((b) => b.profile.registryCode === built.business.profile.registryCode);
+      if (existing) return switchTo(state, existing.profile.id);
+      const debit = built.personalTxns.reduce((sum, t) => sum + t.amount, 0);
+      return {
+        ...state,
+        business: built.business,
+        otherBusinesses: all,
+        personal: {
+          ...state.personal,
+          txns: [...built.personalTxns, ...state.personal.txns],
+          accounts: state.personal.accounts.map((a) =>
+            a.id === "p-main" ? { ...a, balance: Math.round((a.balance + debit) * 100) / 100 } : a,
+          ),
+        },
+      };
+    }
+    case "biz/switch":
+      return switchTo(state, action.id);
+    case "session/set":
+      return { ...state, session: { method: action.method } };
     case "formation/reset":
       return { ...state, formation: initialFormation };
   }
@@ -527,6 +647,17 @@ export function useStore() {
   const ctx = useContext(StoreContext);
   if (!ctx) throw new Error("useStore must be used inside <StoreProvider>");
   return ctx;
+}
+
+/** The active company's profile (name, registry code, owners, …). */
+export function useCompany() {
+  return useStore().state.business.profile;
+}
+
+/** All companies Mari can act for, active first. */
+export function useCompanies() {
+  const { state } = useStore();
+  return [state.business, ...state.otherBusinesses].map((b) => b.profile);
 }
 
 export function useMember(id: string | undefined) {

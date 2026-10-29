@@ -82,3 +82,16 @@ export const turnoverBands = [
 ] as const;
 
 export const countryOptions = ["Estonia", "Finland", "Latvia", "Lithuania", "Sweden", "Germany", "United Kingdom", "United States", "Other EU"];
+
+/** Identifiers the registrar and the bank hand out at the end of the demo flow. */
+export const NEW_COMPANY = {
+  registryCode: "17012345",
+  iban: "EE582200221081234567",
+  appRef: "2026-0412-883",
+};
+
+/** Two-person approval rules need two board members; a sole founder signs alone. */
+export function effectivePreset(f: { approvalPreset: "single" | "second" | "always"; mode: "new" | "existing" | null; founders: { board: boolean }[] }) {
+  const board = f.mode === "existing" ? 1 : f.founders.filter((p) => p.board).length;
+  return board < 2 ? "single" : f.approvalPreset;
+}

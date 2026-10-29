@@ -2,6 +2,7 @@
 
 import { Check, Download, Paperclip, ShieldCheck, Zap } from "lucide-react";
 import { useState } from "react";
+import { SmartIdModal } from "@/components/banking/smart-id";
 import { Timeline } from "@/components/banking/txn";
 import { FeeBreakdown } from "@/components/banking/transparency";
 import { Avatar } from "@/components/ui/avatar";
@@ -13,7 +14,6 @@ import { Drawer, Modal } from "@/components/ui/overlay";
 import { StatusDot } from "@/components/ui/status-dot";
 import { Segmented } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
-import { companyLimits } from "@/lib/data/business";
 import { merchantStyle } from "@/lib/data/merchants";
 import { cn } from "@/lib/cn";
 import { fmtDate, fmtDateTime, iban as fmtIban, money, NOW } from "@/lib/format";
@@ -26,6 +26,7 @@ import {
   eligibleApprovers,
   feeFor,
   freePaymentsUsed,
+  isSoleSignatory,
   paymentTimeline,
   rangeLabel,
   ruleFor,
@@ -93,7 +94,7 @@ export function PaymentDrawer({
             variant="secondary"
             leading={<Download className="size-4" />}
             onClick={async () => {
-              const file = await downloadBizPaymentConfirmation(p, (id) => state.business.members.find((m) => m.id === id)?.name ?? id);
+              const file = await downloadBizPaymentConfirmation(p, (id) => state.business.members.find((m) => m.id === id)?.name ?? id, { ...state.business.profile, iban: state.business.accounts[0]!.iban });
               toast({ title: "Confirmation downloaded", description: file });
             }}
           >
@@ -111,7 +112,7 @@ export function PaymentDrawer({
           <div className="flex flex-col items-center border-b border-line px-6 pt-6 pb-5 text-center">
             <BeneficiaryMark name={p.beneficiary} size="lg" />
             <p className="mt-3 text-sm font-medium text-ink-2">{p.beneficiary}</p>
-            <Money value={p.amount} className="mt-1 text-[34px] leading-10 font-semibold tracking-[-0.03em]" />
+            <Money value={p.amount} className="font-display mt-1 text-[34px] leading-10 font-semibold tracking-[-0.015em]" />
             <div className="mt-2 flex items-center gap-2">
               <StatusDot status={statusMeta[p.status].dot} label={statusMeta[p.status].label} pulse={p.status === "awaiting"} />
               <span className="text-ink-4">·</span>
@@ -164,7 +165,7 @@ export function PaymentDrawer({
                 <KeyValue label="Invoice">
                   <button
                     onClick={async () => {
-                      const file = await downloadInvoice(p);
+                      const file = await downloadInvoice(p, { ...state.business.profile, iban: state.business.accounts[0]!.iban });
                       toast({ title: "Invoice downloaded", description: file });
                     }}
                     className="inline-flex items-center gap-1 text-teal hover:underline"
@@ -254,6 +255,7 @@ export function NewPaymentDrawer({ open, onClose }: { open: boolean; onClose: ()
 }
 
 function NewPaymentForm({ onDone }: { onDone: () => void }) {
+  const companyLimits = useStore().state.business.limits;
   const { state, dispatch } = useStore();
   const toast = useToast();
   const { members, rules, payments } = state.business;
@@ -264,6 +266,7 @@ function NewPaymentForm({ onDone }: { onDone: () => void }) {
   const [when, setWhen] = useState<"approved" | "date">("approved");
   const [date, setDate] = useState("2026-10-30");
   const [attachment, setAttachment] = useState<string | null>(null);
+  const [signing, setSigning] = useState(false);
 
   const saved = Array.from(
     new Map(payments.filter((p) => p.iban.startsWith("EE")).map((p) => [p.iban, { name: p.beneficiary, iban: p.iban }])).values(),
@@ -280,15 +283,18 @@ function NewPaymentForm({ onDone }: { onDone: () => void }) {
   const draft = { ruleId: rule.id, createdBy: CURRENT_MEMBER, approvals: [], amount, newBeneficiary };
   const approvers = eligibleApprovers(draft, rules, members);
   const fee = feeFor(scheme);
-  const free = freePaymentsUsed(1);
+  const free = freePaymentsUsed(state.business.allowances, 1);
   const executeAt = when === "approved" ? NOW.toISOString() : `${date}T09:00:00+02:00`;
   const balance = state.business.accounts.find((a) => a.id === "b-main")?.balance ?? 0;
   const overBalance = amount + fee > balance;
   const valid = name.trim().length > 1 && check.state === "valid" && amount > 0 && reference.trim().length > 0 && !overBalance;
 
+  const sole = isSoleSignatory(members, CURRENT_MEMBER);
+
   const submit = () => {
     dispatch({
       type: "biz/createPayment",
+      signedAsSole: sole,
       payment: {
         beneficiary: name.trim(),
         iban: ibanRaw.replace(/\s+/g, "").toUpperCase(),
@@ -303,10 +309,14 @@ function NewPaymentForm({ onDone }: { onDone: () => void }) {
         newBeneficiary,
       },
     });
-    toast({
-      title: "Payment created",
-      description: approvers.length ? `Waiting for ${approvers.map((m) => m.name).join(" or ")} to approve` : "Waiting for approval",
-    });
+    toast(
+      sole
+        ? { title: when === "date" ? "Payment scheduled" : "Payment sent", description: `${money(amount)} to ${name.trim()} · signed by you as the only signatory` }
+        : {
+            title: "Payment created",
+            description: approvers.length ? `Waiting for ${approvers.map((m) => m.name).join(" or ")} to approve` : "Waiting for approval",
+          },
+    );
     onDone();
   };
 
@@ -409,9 +419,15 @@ function NewPaymentForm({ onDone }: { onDone: () => void }) {
               </div>
             </div>
             <p className="mt-2.5 border-t border-line pt-2.5 text-[12px] text-ink-3">
-              You&apos;re creating this payment, so you can&apos;t approve it yourself.
-              {approvers.length > 0 && ` ${approvers.map((m) => m.name).join(" or ")} will get a notification.`}
-              {newBeneficiary && rule.id === "r-1" && " First payments to a new beneficiary always need a board member."}
+              {sole ? (
+                <>You&apos;re the company&apos;s only signatory, so your Smart-ID signature approves it. Add a second board member in Team &amp; access to require two people.</>
+              ) : (
+                <>
+                  You&apos;re creating this payment, so you can&apos;t approve it yourself.
+                  {approvers.length > 0 && ` ${approvers.map((m) => m.name).join(" or ")} will get a notification.`}
+                  {newBeneficiary && rule.id === "r-1" && " First payments to a new beneficiary always need a board member."}
+                </>
+              )}
             </p>
           </div>
 
@@ -441,11 +457,27 @@ function NewPaymentForm({ onDone }: { onDone: () => void }) {
       </div>
 
       <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-line bg-canvas px-5 py-3">
-        <p className="text-[12px] text-ink-3">{when === "date" ? `Scheduled for ${fmtDate(executeAt, "long")}` : "Nothing is sent until it's approved"}</p>
-        <Button variant="primary" disabled={!valid} onClick={submit}>
-          Submit for approval
+        <p className="text-[12px] text-ink-3">
+          {when === "date" ? `Scheduled for ${fmtDate(executeAt, "long")}` : sole ? "Sent as soon as you sign" : "Nothing is sent until it's approved"}
+        </p>
+        <Button variant="primary" disabled={!valid} onClick={() => (sole ? setSigning(true) : submit())}>
+          {sole ? "Sign and send" : "Submit for approval"}
         </Button>
       </div>
+      <SmartIdModal
+        open={signing}
+        onClose={() => setSigning(false)}
+        onConfirmed={() => {
+          setSigning(false);
+          submit();
+        }}
+        action={`Payment of ${money(amount)} to ${name.trim() || "beneficiary"}`}
+        details={[
+          { label: "IBAN", value: ibanRaw },
+          { label: "Fee", value: money(fee) },
+          { label: "When", value: when === "date" ? fmtDate(executeAt, "long") : "Now" },
+        ]}
+      />
     </div>
   );
 }

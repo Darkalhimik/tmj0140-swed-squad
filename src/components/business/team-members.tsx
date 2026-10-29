@@ -15,9 +15,9 @@ import { Modal } from "@/components/ui/overlay";
 import { StatusDot } from "@/components/ui/status-dot";
 import { Segmented } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
-import { company, companyLimits, roleMeta } from "@/lib/data/business";
+import { roleMeta } from "@/lib/data/business";
 import { fmtDateTime, money, NOW, relative } from "@/lib/format";
-import { CURRENT_MEMBER, useStore } from "@/lib/store";
+import { CURRENT_MEMBER, useCompany, useStore } from "@/lib/store";
 import type { Member, RoleId } from "@/lib/types";
 import { AuthMethod, capabilities, permissionDiff, ROLE_ORDER, signingLines } from "./team-shared";
 
@@ -37,6 +37,7 @@ function activeRecently(m: Member) {
 }
 
 export function MembersTable() {
+  const company = useCompany();
   const { state, dispatch } = useStore();
   const toast = useToast();
   const router = useRouter();
@@ -314,6 +315,7 @@ const PRESETS = ["2000", "5000", "10000", "none", "custom"] as const;
 type Preset = (typeof PRESETS)[number];
 
 function LimitDialog({ member, onClose, onSign }: { member: Member; onClose: () => void; onSign: (limit: number | null) => void }) {
+  const companyLimits = useStore().state.business.limits;
   const initial: Preset =
     member.approvalLimit === null ? "none" : (PRESETS as readonly string[]).includes(String(member.approvalLimit)) ? (String(member.approvalLimit) as Preset) : "custom";
   const [preset, setPreset] = useState<Preset>(initial);
@@ -384,6 +386,7 @@ function LimitDialog({ member, onClose, onSign }: { member: Member; onClose: () 
 }
 
 function RemoveDialog({ member, onClose, onSign }: { member: Member; onClose: () => void; onSign: () => void }) {
+  const company = useCompany();
   const { state } = useStore();
   const [typed, setTyped] = useState("");
   const cards = state.business.cards.filter((c) => c.memberId === member.id && !c.frozen);

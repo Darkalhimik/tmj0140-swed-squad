@@ -3,6 +3,7 @@
 import { Command } from "cmdk";
 import {
   ArrowRight,
+  Copy,
   CreditCard,
   Download,
   FileText,
@@ -26,6 +27,7 @@ type Entry = { label: string; icon: LucideIcon; run: () => void; hint?: string; 
 
 export function CommandMenu() {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const router = useRouter();
   const pathname = usePathname();
   const scope = scopeOf(pathname);
@@ -52,8 +54,45 @@ export function CommandMenu() {
 
   const go = (href: string) => () => {
     setOpen(false);
+    setSearch("");
     router.push(href);
   };
+
+  const copy = (label: string, value: string) => () => {
+    void navigator.clipboard?.writeText(value.replace(/\s+/g, ""));
+    setOpen(false);
+    setSearch("");
+    toast({ title: `${label} copied`, description: value });
+  };
+
+  // Account numbers are always findable ("iban", "account number", "details").
+  const ibanEntries: Entry[] = [
+    ...state.personal.accounts
+      .filter((a) => a.kind === "current" || a.kind === "savings")
+      .map((a) => ({
+        label: `Copy IBAN · ${a.name}`,
+        icon: Copy,
+        hint: a.iban.slice(0, 4) + " … " + a.iban.slice(-4),
+        keywords: ["iban", "account number", "details", "bank details", "konto"],
+        run: copy("IBAN", a.iban.replace(/(.{4})/g, "$1 ").trim()),
+      })),
+    {
+      label: `Copy IBAN · ${state.business.profile.short}`,
+      icon: Copy,
+      hint: state.business.accounts[0]!.iban.slice(0, 4) + " … " + state.business.accounts[0]!.iban.slice(-4),
+      keywords: ["iban", "account number", "company", "business"],
+      run: copy("IBAN", state.business.accounts[0]!.iban.replace(/(.{4})/g, "$1 ").trim()),
+    },
+  ];
+
+  // Search transactions by who they were with.
+  const q = search.trim().toLowerCase();
+  const txnMatches =
+    q.length >= 2
+      ? [...new Set((scope === "business" ? state.business.txns : state.personal.txns).map((t) => t.counterparty))]
+          .filter((name) => name.toLowerCase().includes(q))
+          .slice(0, 5)
+      : [];
 
   const actions: Entry[] =
     scope === "personal"
@@ -128,13 +167,36 @@ export function CommandMenu() {
           <SearchGlyph />
           <Command.Input
             autoFocus
-            placeholder="Search pages and actions…"
+            value={search}
+            onValueChange={setSearch}
+            placeholder="Search pages, actions, IBANs and transactions…"
             className="h-13 w-full bg-transparent text-[15px] text-ink outline-none placeholder:text-ink-4"
           />
           <Kbd>Esc</Kbd>
         </div>
         <Command.List className="max-h-[min(420px,60vh)] overflow-y-auto p-2 [&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1.5 [&_[cmdk-group-heading]]:text-[12px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-ink-4">
-          <Command.Empty className="py-10 text-center text-sm text-ink-3">No results. Try “card” or “invite”.</Command.Empty>
+          <Command.Empty className="py-10 text-center text-sm text-ink-3">No results for “{search}”. Try “iban”, “card” or a shop name.</Command.Empty>
+          {txnMatches.length > 0 && (
+            <Command.Group heading="Transactions">
+              {txnMatches.map((name) => (
+                <Item
+                  key={name}
+                  value={`transactions ${name}`}
+                  entry={{
+                    label: `Transactions with ${name}`,
+                    icon: ArrowRight,
+                    keywords: [name],
+                    run: go(scope === "business" ? "/business/payments" : `/personal/transactions?q=${encodeURIComponent(name)}`),
+                  }}
+                />
+              ))}
+            </Command.Group>
+          )}
+          <Command.Group heading="Account details">
+            {ibanEntries.map((e) => (
+              <Item key={e.label} entry={e} />
+            ))}
+          </Command.Group>
           <Command.Group heading="Actions">
             {actions.map((a) => (
               <Item key={a.label} entry={a} />

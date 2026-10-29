@@ -123,7 +123,7 @@ export function Tooltip({ content, children, side = "top" }: { content: ReactNod
       <span
         role="tooltip"
         className={cn(
-          "pointer-events-none absolute left-1/2 z-40 w-max max-w-64 -translate-x-1/2 rounded-md bg-ink px-2 py-1 text-[12px] leading-4 font-normal text-white opacity-0 shadow-menu transition-opacity duration-150 group-hover/tt:opacity-100 group-hover/tt:delay-300",
+          "pointer-events-none absolute left-1/2 z-40 w-max max-w-64 -translate-x-1/2 rounded-md bg-ink px-2 py-1 text-[12px] leading-4 font-normal text-white opacity-0 shadow-menu transition-opacity duration-150 group-hover/tt:opacity-100 group-hover/tt:delay-300 group-focus-within/tt:opacity-100",
           side === "top" ? "bottom-[calc(100%+6px)]" : "top-[calc(100%+6px)]",
         )}
       >

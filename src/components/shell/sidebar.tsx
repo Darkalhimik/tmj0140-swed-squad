@@ -8,10 +8,10 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Menu } from "@/components/ui/menu";
 import { Kbd } from "@/components/ui/misc";
-import { company } from "@/lib/data/business";
 import { person } from "@/lib/data/personal";
 import { cn } from "@/lib/cn";
-import { useStore } from "@/lib/store";
+import { useCompanies, useCompany, useStore } from "@/lib/store";
+import type { CompanyProfile } from "@/lib/types";
 import { isActive, nav, scopeOf, type Scope } from "./nav";
 
 export function openCommandMenu() {
@@ -90,6 +90,14 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           </Link>
         )}
         <UserMenu />
+        <Link
+          href="/compare"
+          onClick={onNavigate}
+          className="flex items-center justify-between rounded-lg px-2 py-1.5 text-[12px] font-medium text-teal hover:bg-muted/70"
+        >
+          Compare with Swedbank today
+          <ArrowUpRight className="size-3.5" />
+        </Link>
         <p className="px-2 text-[11px] leading-4 text-ink-4">
           Concept by <span className="font-medium text-ink-3">SWED SQUAD</span> · TMJ0140 · not affiliated with Swedbank
         </p>
@@ -104,10 +112,13 @@ function ScopeSwitcher({ scope, onNavigate }: { scope: Scope; onNavigate?: () =>
     onNavigate?.();
     router.push(href);
   };
+  const { dispatch } = useStore();
+  const active = useCompany();
+  const companies = useCompanies();
   const current =
     scope === "personal"
       ? { name: person.name, sub: "Personal", avatar: <Avatar name={person.name} size="sm" /> }
-      : { name: company.short, sub: "Business · OÜ", avatar: <CompanyMark /> };
+      : { name: active.short, sub: active.isNew ? "Business · new" : "Business · OÜ", avatar: <CompanyMark /> };
 
   return (
     <Menu
@@ -142,17 +153,22 @@ function ScopeSwitcher({ scope, onNavigate }: { scope: Scope; onNavigate?: () =>
           hint: scope === "personal" ? <Check className="size-4 text-ink" /> : undefined,
           onSelect: () => go("/personal"),
         },
-        {
-          label: (
-            <span className="flex flex-col">
-              <span>{company.name}</span>
-              <span className="text-[11px] text-ink-3">Business · Owner</span>
-            </span>
-          ),
-          icon: <CompanyMark />,
-          hint: scope === "business" ? <Check className="size-4 text-ink" /> : undefined,
-          onSelect: () => go("/business"),
-        },
+        ...[...companies]
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map((c) => ({
+            label: (
+              <span className="flex flex-col">
+                <span>{c.name}</span>
+                <span className="text-[11px] text-ink-3">Business · Owner{c.isNew ? " · new" : ""}</span>
+              </span>
+            ),
+            icon: <CompanyMark profile={c} />,
+            hint: scope === "business" && c.id === active.id ? <Check className="size-4 text-ink" /> : undefined,
+            onSelect: () => {
+              dispatch({ type: "biz/switch", id: c.id });
+              go("/business");
+            },
+          })),
         "separator",
         { label: "Start a new company", icon: <Plus className="size-4" />, onSelect: () => go("/start") },
         { label: "Add an existing company", icon: <ArrowUpRight className="size-4" />, onSelect: () => go("/start?mode=existing") },
@@ -161,23 +177,27 @@ function ScopeSwitcher({ scope, onNavigate }: { scope: Scope; onNavigate?: () =>
   );
 }
 
-export function CompanyMark({ size = "sm" }: { size?: "sm" | "md" | "lg" }) {
+export function CompanyMark({ size = "sm", profile }: { size?: "sm" | "md" | "lg"; profile?: CompanyProfile }) {
+  const active = useCompany();
+  const mark = (profile ?? active).mark;
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-md bg-[#1e2a3a] font-semibold text-[#f6d58b]",
+        "inline-flex shrink-0 items-center justify-center rounded-md font-semibold",
         size === "sm" && "size-6 text-[11px]",
         size === "md" && "size-8 text-[13px]",
         size === "lg" && "size-11 rounded-lg text-[17px]",
       )}
+      style={{ background: mark.bg, color: mark.fg }}
     >
-      N
+      {mark.letter}
     </span>
   );
 }
 
 function UserMenu() {
   const router = useRouter();
+  const method = useStore().state.session.method;
   return (
     <Menu
       align="start"
@@ -190,7 +210,7 @@ function UserMenu() {
           <Avatar name={person.name} size="sm" />
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[13px] font-medium leading-4">{person.name}</span>
-            <span className="block truncate text-[11px] leading-4 text-ink-3">Signed in with Smart-ID</span>
+            <span className="block truncate text-[11px] leading-4 text-ink-3">Signed in with {method}</span>
           </span>
           <Settings2 className="size-3.5 text-ink-3" />
         </button>

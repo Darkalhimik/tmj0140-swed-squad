@@ -11,9 +11,9 @@ import { Switch } from "@/components/ui/switch";
 import { Segmented } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/cn";
-import { company, roleMeta } from "@/lib/data/business";
+import { roleMeta } from "@/lib/data/business";
 import { fmtDate, NOW } from "@/lib/format";
-import { useStore } from "@/lib/store";
+import { useCompany, useStore } from "@/lib/store";
 import type { RoleId } from "@/lib/types";
 import { capabilities } from "./team-shared";
 
@@ -27,6 +27,7 @@ export function InviteDrawer({ open, onClose, onSent }: { open: boolean; onClose
 }
 
 function InviteDrawerInner({ onClose, onSent }: { onClose: () => void; onSent: () => void }) {
+  const company = useCompany();
   const { state, dispatch } = useStore();
   const toast = useToast();
   const [emails, setEmails] = useState<string[]>([]);

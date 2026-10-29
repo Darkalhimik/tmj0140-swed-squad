@@ -17,9 +17,9 @@ import { Segmented } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/cn";
 import { downloadCsv } from "@/lib/export/download";
-import { company, members as seedMembers, roleMeta } from "@/lib/data/business";
+import { members as seedMembers, roleMeta } from "@/lib/data/business";
 import { dayLabel, fmtDateTime, fmtTime, groupBy, NOW, relative } from "@/lib/format";
-import { useStore } from "@/lib/store";
+import { useCompany, useStore } from "@/lib/store";
 import type { AuditEvent } from "@/lib/types";
 
 type Category = "all" | ActivityCategory;
@@ -29,6 +29,7 @@ const NOW_ISO = NOW.toISOString();
 const periodLabels: Record<Period, string> = { "1": "Last 24 hours", "7": "Last 7 days", "30": "Last 30 days", all: "All time" };
 
 export function ActivityLog() {
+  const company = useCompany();
   const { state, dispatch } = useStore();
   const toast = useToast();
   const params = useSearchParams();
