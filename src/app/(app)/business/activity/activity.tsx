@@ -84,7 +84,7 @@ export function ActivityLog() {
     <PageContainer>
       <PageHeader
         title="Activity log"
-        description={`Every sign-in, payment, card and access change at ${company.name}. Entries are kept for 7 years and can't be edited or deleted — not even by owners.`}
+        description={`Sign-ins, payments, cards and access changes at ${company.name}. Kept for 7 years; nobody can edit them.`}
         actions={
           <Button variant="secondary" leading={<Download className="size-4" />} onClick={exportCsv} disabled={!events.length}>
             Export CSV
@@ -310,7 +310,7 @@ function EventDrawer({
               </Badge>
               Recorded by Swedbank, read-only, retained until {new Date(e.at).getUTCFullYear() + 7}.
             </p>
-            <p>Something you don&apos;t recognise? Freeze cards and sign out all devices from Company → Limits & security, then call 613 2222.</p>
+            <p>Don&apos;t recognise something? Freeze the card and call 613 2222.</p>
           </section>
         </div>
       )}

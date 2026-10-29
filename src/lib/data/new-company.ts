@@ -1,7 +1,7 @@
 import type { BusinessData, Formation } from "@/lib/store";
 import type { ApprovalRule, AuditEvent, Card, Invite, Member, Txn } from "@/lib/types";
 import { roleMeta } from "./business";
-import { effectivePreset, NEW_COMPANY, registryLookup, STATE_FEE } from "./formation";
+import { effectivePreset, NEW_COMPANY, registryLookup, STATE_FEE, turnoverBands } from "./formation";
 import type { Allowance } from "./pricing";
 
 const YOU = "m-mari";
@@ -150,7 +150,17 @@ export function buildCompanyFromFormation(f: Formation, now: string): { business
       address: isNew ? f.addressLine : (lookup?.address ?? ""),
       emtak: isNew ? (f.emtak ? `${f.emtak.code} — ${f.emtak.label}` : "—") : (lookup?.emtak ?? "—"),
       employees: 0,
-      kyc: { lastReviewed: now.slice(0, 10), nextReview: nextYear, risk: "Standard" },
+      kyc: {
+        lastReviewed: now.slice(0, 10),
+        nextReview: nextYear,
+        risk: "Standard",
+        answers: [
+          { label: "What the company does", value: f.description.trim() || f.emtak?.label || "—" },
+          { label: "Expected turnover", value: turnoverBands.find((b) => b.value === f.turnover)?.label ?? "—" },
+          { label: "Countries you trade with", value: f.countries.join(", ") || "Estonia" },
+          { label: "Cash usage", value: f.cash ? "Yes" : "None" },
+        ],
+      },
       board: board.map((b) => b.name),
       owners: isNew ? f.founders.map((p) => ({ name: p.name, share: p.share })) : (lookup?.owners ?? []),
       representation: f.representation,

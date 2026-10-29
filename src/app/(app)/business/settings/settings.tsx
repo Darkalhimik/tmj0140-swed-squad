@@ -18,54 +18,74 @@ import { Input } from "@/components/ui/input";
 import { Money, Note } from "@/components/ui/misc";
 import { Modal } from "@/components/ui/overlay";
 import { Segmented } from "@/components/ui/tabs";
+import { Tabs } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { roleMeta } from "@/lib/data/business";
+import { cn } from "@/lib/cn";
 import { fmtDate, iban as fmtIban, money } from "@/lib/format";
 import { useCompany, useStore } from "@/lib/store";
 
-const SECTIONS = [
-  { id: "general", label: "General" },
-  { id: "people", label: "People & ownership" },
-  { id: "kyc", label: "Know your customer" },
-  { id: "status", label: "Account status" },
-  { id: "accounts", label: "Accounts" },
-  { id: "limits", label: "Payment limits" },
-  { id: "security", label: "Login restrictions" },
+/** Settings are grouped so only one short page shows at a time. */
+const GROUPS = [
+  { id: "company", label: "Company & owners" },
+  { id: "compliance", label: "Compliance" },
+  { id: "accounts", label: "Accounts & limits" },
   { id: "integrations", label: "Integrations" },
-  { id: "danger", label: "Close account" },
-];
+  { id: "close", label: "Close account" },
+] as const;
+
+type Group = (typeof GROUPS)[number]["id"];
 
 const OWNER_COLORS = ["var(--color-brown)", "var(--color-turquoise)", "var(--color-brand)", "var(--color-yellow)"];
 
 export function CompanySettings() {
+  const [group, setGroup] = useState<Group>("company");
   return (
     <PageContainer>
-      <PageHeader
-        title="Company"
-        description="Your company as the bank sees it — registry data, people, limits and everything we hold about you."
-      />
+      <PageHeader title="Company" description="Registry data, owners, compliance and limits." />
+      <Tabs<Group> className="mb-5 lg:hidden" value={group} onChange={setGroup} items={GROUPS.map((g) => ({ value: g.id, label: g.label }))} />
       <div className="grid gap-8 lg:grid-cols-[180px_minmax(0,1fr)]">
         <nav aria-label="Settings sections" className="hidden lg:block">
           <ul className="sticky top-20 flex flex-col gap-0.5">
-            {SECTIONS.map((s) => (
-              <li key={s.id}>
-                <a href={`#${s.id}`} className="block rounded-md px-2.5 py-1.5 text-[13px] text-ink-3 transition-colors hover:bg-subtle hover:text-ink">
-                  {s.label}
-                </a>
+            {GROUPS.map((g) => (
+              <li key={g.id}>
+                <button
+                  type="button"
+                  onClick={() => setGroup(g.id)}
+                  aria-current={group === g.id ? "page" : undefined}
+                  className={cn(
+                    "block w-full rounded-md px-2.5 py-1.5 text-left text-[13px] transition-colors",
+                    group === g.id ? "bg-surface font-medium text-ink shadow-card" : "text-ink-3 hover:bg-subtle hover:text-ink",
+                  )}
+                >
+                  {g.label}
+                </button>
               </li>
             ))}
           </ul>
         </nav>
         <div className="flex min-w-0 flex-col gap-5">
-          <GeneralSection />
-          <PeopleSection />
-          <KycSection />
-          <AccountStatusSection />
-          <AccountsSection />
-          <LimitsSection />
-          <LoginSection />
-          <IntegrationsSection />
-          <DangerSection />
+          {group === "company" && (
+            <>
+              <GeneralSection />
+              <PeopleSection />
+            </>
+          )}
+          {group === "compliance" && (
+            <>
+              <AccountStatusSection />
+              <KycSection />
+            </>
+          )}
+          {group === "accounts" && (
+            <>
+              <AccountsSection />
+              <LimitsSection />
+              <LoginSection />
+            </>
+          )}
+          {group === "integrations" && <IntegrationsSection />}
+          {group === "close" && <DangerSection />}
         </div>
       </div>
     </PageContainer>
@@ -78,7 +98,7 @@ function GeneralSection() {
     <SettingsSection
       id="general"
       title="Company profile"
-      description="Synced from the e-Business Register, so there's nothing to keep up to date twice."
+      description="Synced from the e-Business Register."
       aside={
         <Badge tone="gray" icon={<RefreshCw className="size-3" />}>
           From e-Business Register · synced 2 h ago
@@ -136,7 +156,7 @@ function PeopleSection() {
     <SettingsSection
       id="people"
       title="People & ownership"
-      description="Management board and owners as registered. Bank access is managed separately in Team & access."
+      description="As registered. Bank access is set in Team & access."
     >
       <p className="mb-2 text-[13px] font-medium text-ink-2">Management board</p>
       <ul className="divide-y divide-line rounded-lg shadow-[0_0_0_1px_var(--color-line)]">
@@ -205,7 +225,7 @@ function AccountsSection() {
     <SettingsSection
       id="accounts"
       title="Accounts"
-      description="Every account has its own IBAN. Sub-accounts are free and open instantly."
+      description="Each has its own IBAN. Sub-accounts are free."
       aside={
         <Button size="sm" variant="secondary" leading={<Plus className="size-3.5" />} onClick={() => setOpen(true)}>
           Open sub-account
@@ -236,7 +256,7 @@ function AccountsSection() {
         open={open}
         onClose={() => setOpen(false)}
         title="Open a sub-account"
-        description="Free, ready instantly, with its own IBAN. Everyone with access to the company sees it."
+        description="Free, with its own IBAN. Everyone with access sees it."
         footer={
           <>
             <Button variant="tertiary" onClick={() => setOpen(false)}>
@@ -316,7 +336,7 @@ function DangerSection() {
       id="danger"
       tone="danger"
       title="Close business account"
-      description="Closing is free. Your statements and the activity log stay available for 7 years."
+      description="Free. Statements and the activity log stay available for 7 years."
       footer={
         <>
           <span>This can&apos;t be undone. Reopening means a new application.</span>
@@ -327,7 +347,7 @@ function DangerSection() {
       }
     >
       <p className="text-sm text-ink-2">
-        Before closing, the balance must be zero, cards cancelled and no payments pending. We&apos;ll show you exactly what&apos;s left.
+        Needs a zero balance, cancelled cards and no pending payments.
       </p>
 
       <Modal
@@ -381,7 +401,7 @@ function DangerSection() {
             onChange={(e) => setTyped(e.target.value)}
             autoComplete="off"
           />
-          <p className="text-[12px] text-ink-3">Once nothing is left, the accounts close within 1 working day and you get a final statement.</p>
+          <p className="text-[12px] text-ink-3">Once nothing is left, the accounts close and you get a final statement.</p>
         </div>
       </Modal>
     </SettingsSection>

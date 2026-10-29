@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Meter } from "@/components/ui/meter";
 import { Money, Note, Tooltip } from "@/components/ui/misc";
 import { Modal } from "@/components/ui/overlay";
+import { Tabs } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { consents as seedConsents, devices as seedDevices, person } from "@/lib/data/personal";
 import { cn } from "@/lib/cn";
@@ -55,7 +56,10 @@ const LIMITS: Limit[] = [
 
 type Signing = { action: string; details: { label: string; value: ReactNode }[]; onDone: () => void };
 
+type Tab = "sign-in" | "apps" | "notifications" | "limits" | "data";
+
 export function Security() {
+  const [tab, setTab] = useState<Tab>("sign-in");
   const toast = useToast();
   const { state } = useStore();
   const [details, setDetails] = useState<PersonalDetails>({
@@ -87,12 +91,27 @@ export function Security() {
 
   return (
     <PageContainer>
-      <PageHeader title="Privacy & security" description="Who can reach your money and data — and how to change it." />
+      <PageHeader title="Privacy & security" description="Who can reach your money and data." />
+
+      <Tabs<Tab>
+        className="mb-5"
+        value={tab}
+        onChange={setTab}
+        items={[
+          { value: "sign-in", label: "Sign-in" },
+          { value: "apps", label: "Connected apps" },
+          { value: "notifications", label: "Notifications" },
+          { value: "limits", label: "Limits" },
+          { value: "data", label: "Your data" },
+        ]}
+      />
 
       <div className="flex flex-col gap-5">
+        {tab === "sign-in" && (
+          <>
         <SettingsSection
           title="Devices & sessions"
-          description="Everywhere you're signed in right now. If you don't recognise one, sign it out and change your Smart-ID PINs."
+          description="Where you're signed in now. Don't recognise one? Sign it out and change your PINs."
           footer={
             <>
               <span>
@@ -146,7 +165,7 @@ export function Security() {
           </div>
         </SettingsSection>
 
-        <SettingsSection title="Sign-in methods" description="Any of these can sign you in. Payments and agreements are always confirmed with Smart-ID, Mobile-ID or ID-card.">
+        <SettingsSection title="Sign-in methods" description="Payments and agreements always need Smart-ID, Mobile-ID or ID-card.">
           <div className="divide-y divide-line">
             <SettingsRow icon={<SmartphoneNfc className="size-4" />} title="Smart-ID" description="iPhone 16 · used today at 10:20">
               <Badge tone="success">Active</Badge>
@@ -164,10 +183,14 @@ export function Security() {
             </SettingsRow>
           </div>
         </SettingsSection>
+          </>
+        )}
 
+        {tab === "apps" && (
+          <>
         <SettingsSection
           title="Apps with access to your account"
-          description="Services you've allowed to read your data or start payments (PSD2). You can revoke access any time — it stops immediately."
+          description="Services you allowed to read your data or start payments (PSD2). Revoking stops them at once."
         >
           <div className="divide-y divide-line">
             {consents.map((c) => {
@@ -207,10 +230,14 @@ export function Security() {
             })}
           </div>
         </SettingsSection>
+          </>
+        )}
 
+        {tab === "notifications" && (
+          <>
         <SettingsSection
           title="Notifications"
-          description="Choose how we reach you. Offers are off unless you turn them on."
+          description="Offers stay off unless you turn them on."
           footer={<span>Push notifications go to the Swedbank app on iPhone 16. Email goes to {person.email}.</span>}
         >
           <div className="-mx-5 overflow-x-auto px-5">
@@ -258,10 +285,14 @@ export function Security() {
             </table>
           </div>
         </SettingsSection>
+          </>
+        )}
 
+        {tab === "limits" && (
+          <>
         <SettingsSection
           title="Payment limits"
-          description="Caps on what can leave your accounts. Raising a limit needs Smart-ID; lowering applies instantly. Card limits are on each card."
+          description="Lowering applies at once; raising needs your signature. Card limits are on each card."
         >
           <div className="divide-y divide-line">
             {limits.map((l) => (
@@ -282,10 +313,14 @@ export function Security() {
             ))}
           </div>
         </SettingsSection>
+          </>
+        )}
 
+        {tab === "data" && (
+          <>
         <SettingsSection
           title="Your data"
-          description="What we hold about you and when it was last confirmed. We review it regularly, as anti-money-laundering rules require."
+          description="What we hold and when you last confirmed it."
           action={
             <Button
               size="sm"
@@ -344,6 +379,8 @@ export function Security() {
             ))}
           </dl>
         </SettingsSection>
+          </>
+        )}
       </div>
 
       <DetailsModal

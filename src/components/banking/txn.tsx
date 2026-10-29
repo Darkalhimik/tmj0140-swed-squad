@@ -383,7 +383,7 @@ export function TxnDrawer({
             <div className="px-6 pb-6">
               <p className="flex items-start gap-2 rounded-lg bg-subtle p-3 text-[13px] text-ink-2">
                 <Landmark className="mt-0.5 size-4 shrink-0 text-ink-3" />
-                This is your monthly package fee. See exactly what it covers in Plan &amp; fees.
+                Your monthly plan fee. What it covers is in Plan &amp; fees.
               </p>
             </div>
           )}

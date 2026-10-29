@@ -125,7 +125,7 @@ export function PaymentDrawer({
           {mine && p.status === "awaiting" && (
             <div className="px-6 pt-5">
               <Note tone="gray" title="You created this payment">
-                Someone else must approve it. Nobody can approve their own payment — this rule is always on.
+                Someone else must approve it — nobody approves their own payment.
               </Note>
             </div>
           )}
@@ -420,7 +420,7 @@ function NewPaymentForm({ onDone }: { onDone: () => void }) {
             </div>
             <p className="mt-2.5 border-t border-line pt-2.5 text-[12px] text-ink-3">
               {sole ? (
-                <>You&apos;re the company&apos;s only signatory, so your Smart-ID signature approves it. Add a second board member in Team &amp; access to require two people.</>
+                <>You&apos;re the only signatory, so your signature approves it.</>
               ) : (
                 <>
                   You&apos;re creating this payment, so you can&apos;t approve it yourself.

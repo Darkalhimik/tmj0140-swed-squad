@@ -17,7 +17,7 @@ import { Meter } from "@/components/ui/meter";
 import { EmptyState, Money, Note } from "@/components/ui/misc";
 import { Modal } from "@/components/ui/overlay";
 import { Switch } from "@/components/ui/switch";
-import { Segmented } from "@/components/ui/tabs";
+import { Segmented, Tabs } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/cn";
 import { money } from "@/lib/format";
@@ -38,6 +38,8 @@ function cardLabel(c: Card) {
   return `${c.name} ••${c.last4}`;
 }
 
+type Tab = "payments" | "limits" | "security";
+
 export function Cards() {
   const { state, dispatch } = useStore();
   const toast = useToast();
@@ -48,6 +50,7 @@ export function Cards() {
   const [modal, setModal] = useState<null | "pin" | "replace" | "virtual" | { limit: number }>(null);
   const [signing, setSigning] = useState<Signing | null>(null);
   const [openTxn, setOpenTxn] = useState<Txn | null>(null);
+  const [tab, setTab] = useState<Tab>("payments");
 
   const card = (selectedId === "__last__" ? cards.at(-1) : cards.find((c) => c.id === selectedId)) ?? cards[0]!;
   const cardTxns = txns.filter((t) => t.cardId === card.id).slice(0, 6);
@@ -77,7 +80,7 @@ export function Cards() {
     <PageContainer>
       <PageHeader
         title="Cards"
-        description="Freeze, limit and control every card. Changes apply instantly."
+        description="Changes apply at once."
         actions={
           <Button variant="primary" leading={<Plus className="size-4" />} onClick={() => setModal("virtual")}>
             Create virtual card
@@ -199,77 +202,88 @@ export function Cards() {
                   </Button>
                 }
               >
-                Refunds and subscriptions you cancel still arrive. Freezing is free and you can undo it any time.
+                Refunds still arrive. Unfreeze any time.
               </Note>
             )}
           </section>
 
-          <SettingsSection title="Security" description="Turn off what you don't use. Each switch takes effect on the next payment attempt.">
-            <div className="divide-y divide-line">
-              {SETTINGS.map((s) => {
-                const unavailable = virtual && s.physicalOnly;
-                const on = card.settings[s.key] && !unavailable;
-                return (
-                  <SettingsRow
-                    key={s.key}
-                    icon={s.icon}
-                    title={s.label}
-                    muted={unavailable}
-                    description={unavailable ? "Not available for virtual cards." : on ? "On" : s.off}
-                  >
-                    <Switch
-                      checked={on}
-                      disabled={unavailable}
-                      label={s.label}
-                      onChange={(v) => {
-                        dispatch({ type: "personal/cardSetting", id: card.id, key: s.key, value: v });
-                        toast({ title: `${s.label} turned ${v ? "on" : "off"}`, description: cardLabel(card) });
-                      }}
-                    />
-                  </SettingsRow>
-                );
-              })}
-            </div>
-          </SettingsSection>
+          <Tabs<Tab>
+            value={tab}
+            onChange={setTab}
+            items={[
+              { value: "payments", label: "Payments" },
+              { value: "limits", label: "Limits" },
+              { value: "security", label: "Security" },
+            ]}
+          />
 
-          <SettingsSection title="Limits" description="Lowering a limit applies instantly. Raising one needs Smart-ID.">
-            <div className="divide-y divide-line">
-              {card.limits.map((l, i) => (
-                <div key={l.label} className="flex flex-col gap-2 py-3.5">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-medium">{l.label}</p>
-                      <p className="tabular text-[12px] text-ink-3">
-                        {money(l.used)} of {money(l.max)} {l.period === "day" ? "today" : "this month"} · {money(Math.max(0, l.max - l.used))} left · resets{" "}
-                        {l.period === "day" ? "at midnight" : "1 Nov"}
-                      </p>
-                    </div>
-                    {!(card.kind === "credit" && i === 0) && (
-                      <Button size="sm" variant="secondary" onClick={() => setModal({ limit: i })}>
-                        Edit
-                      </Button>
-                    )}
-                  </div>
-                  <Meter value={l.used} max={l.max} />
+          {tab === "payments" && (
+            <section className="rounded-xl bg-surface pt-2 shadow-card">
+              {cardTxns.length === 0 ? (
+                <EmptyState title="No payments yet" description="Payments with this card show up here." />
+              ) : (
+                <div className="px-2 pb-3">
+                  {cardTxns.map((t) => (
+                    <TxnRow key={t.id} txn={t} showDate onClick={() => setOpenTxn(t)} />
+                  ))}
                 </div>
-              ))}
-            </div>
-          </SettingsSection>
-
-          <section className="rounded-xl bg-surface shadow-card">
-            <div className="px-5 pt-5 pb-2">
-              <h2 className="text-[17px] font-semibold tracking-[-0.02em]">Recent payments with this card</h2>
-            </div>
-            {cardTxns.length === 0 ? (
-              <EmptyState title="No payments yet" description="Payments made with this card will show up here within seconds." />
-            ) : (
-              <div className="px-2 pb-3">
-                {cardTxns.map((t) => (
-                  <TxnRow key={t.id} txn={t} showDate onClick={() => setOpenTxn(t)} />
+              )}
+            </section>
+          )}
+          {tab === "limits" && (
+            <SettingsSection title="Limits" description="Lowering applies at once; raising needs your signature.">
+              <div className="divide-y divide-line">
+                {card.limits.map((l, i) => (
+                  <div key={l.label} className="flex flex-col gap-2 py-3.5">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-medium">{l.label}</p>
+                        <p className="tabular text-[12px] text-ink-3">
+                          {money(l.used)} of {money(l.max)} {l.period === "day" ? "today" : "this month"} · {money(Math.max(0, l.max - l.used))} left · resets{" "}
+                          {l.period === "day" ? "at midnight" : "1 Nov"}
+                        </p>
+                      </div>
+                      {!(card.kind === "credit" && i === 0) && (
+                        <Button size="sm" variant="secondary" onClick={() => setModal({ limit: i })}>
+                          Edit
+                        </Button>
+                      )}
+                    </div>
+                    <Meter value={l.used} max={l.max} />
+                  </div>
                 ))}
               </div>
-            )}
-          </section>
+            </SettingsSection>
+          )}
+          {tab === "security" && (
+            <SettingsSection title="Security" description="Turn off what you don't use.">
+              <div className="divide-y divide-line">
+                {SETTINGS.map((s) => {
+                  const unavailable = virtual && s.physicalOnly;
+                  const on = card.settings[s.key] && !unavailable;
+                  return (
+                    <SettingsRow
+                      key={s.key}
+                      icon={s.icon}
+                      title={s.label}
+                      muted={unavailable}
+                      description={unavailable ? "Not available for virtual cards." : on ? "On" : s.off}
+                    >
+                      <Switch
+                        checked={on}
+                        disabled={unavailable}
+                        label={s.label}
+                        onChange={(v) => {
+                          dispatch({ type: "personal/cardSetting", id: card.id, key: s.key, value: v });
+                          toast({ title: `${s.label} turned ${v ? "on" : "off"}`, description: cardLabel(card) });
+                        }}
+                      />
+                    </SettingsRow>
+                  );
+                })}
+              </div>
+            </SettingsSection>
+          )}
         </div>
       </div>
 

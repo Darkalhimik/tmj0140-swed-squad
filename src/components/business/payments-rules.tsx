@@ -16,14 +16,14 @@ import { Segmented } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { companyLimits } from "@/lib/data/business";
 import { money } from "@/lib/format";
-import { useStore } from "@/lib/store";
+import { useCompany, useStore } from "@/lib/store";
 import type { ApprovalRule } from "@/lib/types";
 import { eligibleApprovers, rangeLabel, ruleFor } from "./payments-shared";
 
 const LOCKED = [
   {
     title: "Nobody approves their own payment",
-    body: "The person who creates a payment can't approve it — unless they're the company's only signatory. Then their Smart-ID signature is the approval.",
+    body: "The person who creates a payment can't approve it — unless they're the company's only signatory. Then their signature is the approval.",
   },
   { title: "New beneficiaries need a board member", body: "The first payment to an IBAN you haven't paid before always needs a management board member." },
   {
@@ -33,6 +33,7 @@ const LOCKED = [
 ];
 
 export function RulesPanel() {
+  const company = useCompany();
   const companyLimits = useStore().state.business.limits;
   const { state, dispatch } = useStore();
   const toast = useToast();
@@ -60,7 +61,7 @@ export function RulesPanel() {
         <Card>
           <CardHeader
             title="Who approves what"
-            description="By amount. Changes amend your Digital Services Agreement and are signed with Smart-ID — no branch visit."
+            description="By amount. Changes are signed online."
           />
           <ol className="flex flex-col px-5 pb-2">
             {rules.map((r) => {
@@ -145,7 +146,7 @@ export function RulesPanel() {
                 { label: "Rule", value: pending.rule.name },
                 { label: "Range", value: rangeLabel({ ...pending.rule, max: pending.max }) },
                 { label: "Approvals", value: `${pending.rule.approvers} → ${pending.approvers}` },
-                { label: "Company", value: "Nordlight Studio OÜ" },
+                { label: "Company", value: company.name },
               ]
             : []
         }
@@ -239,7 +240,7 @@ function EditRuleBody({
           ]}
         />
       </div>
-      <Note tone="gray">You&apos;ll confirm the change with Smart-ID. Karl Põder gets a notification.</Note>
+      <Note tone="gray">You confirm the change with your e-signature. Board members are notified.</Note>
       <div className="flex justify-end gap-2">
         <Button variant="tertiary" onClick={onClose}>
           Cancel

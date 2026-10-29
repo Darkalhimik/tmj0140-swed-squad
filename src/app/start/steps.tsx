@@ -164,7 +164,7 @@ export function CompanyStep() {
         title="Principal activity"
         description="Pick the one activity that brings in most of your income (EMTAK)."
         error={show && !f.emtak && "Pick a principal activity."}
-        footer="Only one principal activity is registered at founding. Other activities are reported in your annual report."
+        footer="You register one main activity. Others go in the annual report."
       >
         {f.emtak ? (
           <div className="flex items-center justify-between gap-3 rounded-lg bg-subtle px-3.5 py-3">
@@ -206,7 +206,7 @@ export function CompanyStep() {
         title="What will the company do?"
         description="A few sentences in your own words."
         error={show && f.description.trim().length < 40 && `Write at least 40 characters (${f.description.trim().length} so far).`}
-        footer="Why we ask: banks must understand how an account will be used (anti-money-laundering law). Clear answers mean no follow-up calls."
+        footer="Anti-money-laundering law requires us to ask how the account will be used."
       >
         <Textarea
           rows={4}
@@ -412,7 +412,7 @@ export function PeopleStep() {
 
       {eResident && (
         <Note tone="info" title="e-Residents verify remotely">
-          They sign with their e-Residency card or Smart-ID and complete a 2-minute video check. No branch appointment needed.
+          They sign with an e-Residency card or Smart-ID after a video check. No branch visit.
         </Note>
       )}
     </div>
@@ -559,7 +559,7 @@ function KycQuestions() {
       error={show && !f.turnover && "Choose how much money you expect in a year."}
       title="Expected activity"
       description="Rough numbers are fine. You can update them any time."
-      footer="Why we ask: the law requires us to know how business accounts are used. This replaces the separate questionnaire."
+      footer="Required by anti-money-laundering law. Replaces the separate questionnaire."
     >
       <p className="mb-2 text-[13px] font-medium text-ink-2">Money in per year</p>
       <Segmented value={f.turnover || "none"} onChange={(v) => set({ turnover: v })} items={turnoverBands.map((b) => ({ value: b.value, label: b.label }))} className="flex-wrap" />
@@ -643,7 +643,7 @@ export function AccountStep() {
         title="Payment approvals"
         description={
           boardCount < 2
-            ? "You're the only board member, so your Smart-ID signature approves each payment."
+            ? "You're the only board member, so your signature approves each payment."
             : "Applies to every outgoing payment. Whoever creates a payment can't also approve it."
         }
       >
@@ -677,7 +677,7 @@ export function AccountStep() {
         <div className="flex flex-col divide-y divide-line">
           <ToggleRow
             title="Virtual debit cards for board members"
-            body="Ready in Apple Pay and Google Pay as soon as the account opens. Physical cards arrive in 3–5 working days. Free for the first year, then €2.00 per card per month."
+            body="In Apple Pay and Google Pay when the account opens, plastic in 3–5 working days. Free in year one, then €2.00 a month."
             checked={f.cards}
             onChange={(v) => set({ cards: v })}
           />

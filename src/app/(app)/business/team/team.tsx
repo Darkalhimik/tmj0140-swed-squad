@@ -35,7 +35,7 @@ export function Team() {
     <PageContainer>
       <PageHeader
         title="Team & access"
-        description={`${members.length} ${members.length === 1 ? "person has" : "people have"} access to ${company.name}. Every change is signed and shows up in the activity log.`}
+        description={`${members.length} ${members.length === 1 ? "person has" : "people have"} access to ${company.name}.`}
         actions={
           <Button variant="primary" leading={<UserPlus className="size-4" />} onClick={() => setManualInvite(true)}>
             Invite people
@@ -102,7 +102,7 @@ function Invitations({ onInvite }: { onInvite: () => void }) {
         <EmptyState
           icon={<Mail className="size-5" />}
           title="No pending invitations"
-          description="Invite your accountant, a co-founder or employees. They sign in with their own Smart-ID, Mobile-ID or ID-card."
+          description="Everyone signs in with their own Smart-ID, Mobile-ID or ID-card."
           action={
             <Button variant="primary" leading={<UserPlus className="size-4" />} onClick={onInvite}>
               Invite people
@@ -171,7 +171,7 @@ function Invitations({ onInvite }: { onInvite: () => void }) {
         })}
       </ul>
       <div className="border-t border-line bg-canvas px-5 py-3 text-[12px] text-ink-3">
-        Links expire after 7 days. People who haven&apos;t verified their identity yet can do it remotely in a couple of minutes.
+        Links expire after 7 days.
       </div>
     </div>
   );
@@ -183,7 +183,10 @@ function AgreementCard() {
   const { state } = useStore();
   const toast = useToast();
   const signedNow = state.business.audit.filter((e) => e.at === NOW.toISOString() && ACCESS_ACTIONS.has(e.action)).length;
-  const version = 14 + signedNow;
+  // The seed company has a long agreement history; a company opened in the demo starts at version 1, signed at founding.
+  const version = (company.isNew ? 1 : 14) + signedNow;
+  const signedWith = company.isNew ? state.session.method : "Smart-ID";
+  const lastSigned = company.isNew ? company.founded : "2026-10-16T13:00:00+03:00";
 
   return (
     <div className="flex flex-col gap-3 rounded-xl bg-surface p-4 shadow-card sm:flex-row sm:items-center">
@@ -195,7 +198,7 @@ function AgreementCard() {
           <p className="text-sm font-medium text-ink">Digital Services Agreement · version {version}</p>
           <p className="flex items-center gap-1.5 text-[12px] text-ink-3">
             <Avatar name="Mari Tamm" size="xs" />
-            {signedNow ? "Signed just now by Mari Tamm with Smart-ID" : "Last signed 16 Oct 2026 by Mari Tamm with Smart-ID"}
+            {signedNow ? `Signed just now by Mari Tamm with ${state.session.method}` : `Last signed ${fmtDate(lastSigned)} by Mari Tamm with ${signedWith}`}
           </p>
         </div>
       </div>
@@ -212,7 +215,7 @@ function AgreementCard() {
             company: company.name,
             registryCode: company.registryCode,
             version,
-            signedAt: signedNow ? NOW.toISOString() : "2026-10-16T13:00:00+03:00",
+            signedAt: signedNow ? NOW.toISOString() : lastSigned,
             signedBy: "Mari Tamm",
             users: members.map((m) => ({
               name: m.name,

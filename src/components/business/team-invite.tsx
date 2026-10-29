@@ -132,7 +132,7 @@ function InviteDrawerInner({ onClose, onSent }: { onClose: () => void; onSent: (
               <div>
                 <p className="text-sm font-medium text-ink">Issue a business debit card</p>
                 <p className="mt-0.5 text-[12px] leading-4 text-ink-3">
-                  Virtual card ready when they accept, physical card in 3–5 days. €2.00 per card per month · €1,000/month spending limit you can change later.
+                  Virtual when they accept, plastic in 3–5 days · €2.00 a month · €1,000 monthly limit
                 </p>
               </div>
               <Switch checked={card} onChange={setCard} label="Issue a card" />

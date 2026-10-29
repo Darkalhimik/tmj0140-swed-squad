@@ -260,7 +260,7 @@ function RoleDialog({ member, onClose, onSign }: { member: Member; onClose: () =
       onClose={onClose}
       size="lg"
       title={`Change role · ${member.name}`}
-      description="Roles map to Swedbank rights profiles. The change amends your Digital Services Agreement — signed with Smart-ID, no branch visit."
+      description="Roles match Swedbank rights profiles. The change is signed online."
       footer={
         <>
           <Button variant="tertiary" onClick={onClose}>

@@ -99,7 +99,7 @@ export function IntegrationsSection() {
   };
 
   return (
-    <SettingsSection id="integrations" title="Integrations" description="Connections that can read your accounts. You see what each one can access before it connects.">
+    <SettingsSection id="integrations" title="Integrations" description="Apps that can read your accounts. You review their access before connecting.">
       <ul className="divide-y divide-line">
         {INTEGRATIONS.map((i) => {
           const on = connected[i.id];

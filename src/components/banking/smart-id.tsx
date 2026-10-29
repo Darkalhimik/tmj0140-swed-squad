@@ -107,7 +107,7 @@ function SmartIdBody({
           <>
             <p className="mt-4 text-[15px] font-semibold text-ink">Enter PIN2</p>
             <p className="mt-1 max-w-[280px] text-[13px] text-ink-3">
-              Keep your ID-card in the reader and type PIN2 in the window your browser opened. There is no control code with an ID-card.
+              Keep the card in the reader and enter PIN2 in the browser window.
             </p>
           </>
         ) : phase === "waiting" ? (

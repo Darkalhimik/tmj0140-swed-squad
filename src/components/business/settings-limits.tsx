@@ -39,7 +39,7 @@ export function LimitsSection() {
     <SettingsSection
       id="limits"
       title="Payment limits"
-      description="Company-wide limits from your Digital Services Agreement. They apply on top of each person's approval limit."
+      description="Company-wide. Each person's approval limit applies on top."
       aside={
         <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
           Change limits
@@ -142,7 +142,7 @@ function LimitsDialog({ current, onClose, onSign }: { current: Limits; onClose: 
       open
       onClose={onClose}
       title="Change payment limits"
-      description="New limits apply as soon as they're signed. Lower limits are a good fraud defence if you rarely make large payments."
+      description="New limits apply once signed."
       footer={
         <>
           <Button variant="tertiary" onClick={onClose}>
@@ -165,9 +165,9 @@ function LimitsDialog({ current, onClose, onSign }: { current: Limits; onClose: 
           value={form.instant}
           onChange={set("instant")}
           error={errors.instant}
-          hint={`Instant payments arrive within 10 seconds. Single payments are capped at ${money(companyLimits.instantPerPayment)}.`}
+          hint={`Arrive within 10 seconds. Up to ${money(companyLimits.instantPerPayment)} per payment.`}
         />
-        <Note tone="gray">Need more than the self-service maximum? Your account manager can raise it — they call back within an hour on working days.</Note>
+        <Note tone="gray">Need more than the self-service maximum? Your account manager can raise it.</Note>
       </div>
     </Modal>
   );
@@ -191,7 +191,7 @@ export function LoginSection() {
     <SettingsSection
       id="security"
       title="Login restrictions"
-      description="Where people can sign in to the business internet bank from. Applies to everyone at the company."
+      description="Where anyone at the company can sign in from."
       footer={
         dirty ? (
           <>

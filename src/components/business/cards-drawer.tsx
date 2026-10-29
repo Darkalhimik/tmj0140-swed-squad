@@ -207,7 +207,7 @@ function FreezeBody({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: 
         ))}
       </div>
       {reason === "Suspicious payment" && (
-        <Note tone="warning">If you don&apos;t recognise a payment, freeze the card and call 613 2222 — we can block it permanently and start a dispute.</Note>
+        <Note tone="warning">Don&apos;t recognise a payment? Freeze the card and call 613 2222.</Note>
       )}
       <div className="flex justify-end gap-2">
         <Button variant="tertiary" onClick={onCancel}>
@@ -224,7 +224,7 @@ function FreezeBody({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: 
 /** Issue a physical card for a team member or a shared virtual card. */
 export function IssueCardModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
-    <Modal open={open} onClose={onClose} title="Issue a card" description="Cards work the moment they're issued — virtually first, physical in 3–5 days.">
+    <Modal open={open} onClose={onClose} title="Issue a card" description="Virtual right away, plastic in 3–5 days.">
       {open && <IssueBody onClose={onClose} />}
     </Modal>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, Check, Search, SearchX } from "lucide-react";
+import { Check, Search, SearchX } from "lucide-react";
 import { useCallback, useState } from "react";
 import { SmartIdModal } from "@/components/banking/smart-id";
 import { AllowanceRow, allowanceCost, FeeBreakdown, PlanCompare } from "@/components/banking/transparency";
@@ -13,12 +13,16 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { EmptyState, Money } from "@/components/ui/misc";
 import { Modal } from "@/components/ui/overlay";
+import { Tabs } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { personalAllowances, personalFeesByMonth, personalPlanId, personalPlans, priceList, RESET_DATE, type Plan } from "@/lib/data/pricing";
 import { money } from "@/lib/format";
 
+type Tab = "month" | "history" | "plans" | "prices";
+
 export function PlanAndFees() {
   const toast = useToast();
+  const [tab, setTab] = useState<Tab>("month");
   const [current, setCurrent] = useState(personalPlanId);
   const [choosing, setChoosing] = useState<Plan | null>(null);
   const [signing, setSigning] = useState(false);
@@ -44,19 +48,16 @@ export function PlanAndFees() {
 
   return (
     <PageContainer>
-      <PageHeader
-        title="Plan & fees"
-        description="What you pay, what's included and what's left this month — before anything is charged."
-      />
+      <PageHeader title="Plan & fees" description="What you pay, what's included and what's left this month." />
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <Card className="flex flex-col p-6">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-display text-[22px] font-semibold tracking-[-0.015em]">{plan.name}</h2>
             <Badge tone="brown">Your plan</Badge>
           </div>
           <p className="tabular mt-1 text-[15px] text-ink-2">
-            <span className="font-semibold text-ink">{money(plan.price)}</span> per month · next charge on 5 Nov from Everyday account
+            <span className="font-semibold text-ink">{money(plan.price)}</span> a month · next charge 5 Nov
           </p>
           <ul className="mt-5 grid gap-2 sm:grid-cols-2">
             {plan.highlights.map((h) => (
@@ -66,55 +67,56 @@ export function PlanAndFees() {
               </li>
             ))}
           </ul>
-          <div className="mt-auto flex flex-wrap items-center gap-3 pt-6">
-            <a
-              href="#compare"
-              className="inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[13px] font-medium text-ink shadow-[0_0_0_1px_var(--color-line-strong)] hover:bg-subtle"
-            >
-              Compare plans <ArrowDown className="size-3.5" />
-            </a>
-            <span className="text-[12px] text-ink-3">Free until age 25 · €0.32 from age 65</span>
-          </div>
         </Card>
 
         <Card className="p-6">
-          <p className="text-[13px] text-ink-3">Forecast for November</p>
+          <p className="text-[13px] text-ink-3">November, expected</p>
           <p className="font-display tabular mt-1 text-[32px] leading-10 font-semibold tracking-[-0.015em]">
             <Money value={forecast} />
           </p>
           <dl className="mt-4 flex flex-col gap-2 border-t border-line pt-4 text-[13px]">
             <div className="flex justify-between">
-              <dt className="text-ink-3">Plan fee</dt>
+              <dt className="text-ink-3">Plan</dt>
               <dd className="tabular font-medium">{money(plan.price)}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-ink-3">Usage beyond allowances</dt>
+              <dt className="text-ink-3">Beyond allowances</dt>
               <dd className="tabular font-medium">{money(extras)}</dd>
             </div>
           </dl>
-          <p className="mt-4 text-[12px] leading-5 text-ink-3">
-            {extras === 0 ? "Nothing you used this month costs extra." : "Includes usage beyond your free allowances."} Last 6 months you paid{" "}
-            <Money value={sixMonths} className="font-medium text-ink-2" /> in total.
-          </p>
         </Card>
       </div>
 
-      <div className="mt-5 flex flex-col gap-5">
-        <SettingsSection title="This month's usage" description="1–31 October · allowances reset on 1 November.">
+      <Tabs<Tab>
+        className="mt-8 mb-5"
+        value={tab}
+        onChange={setTab}
+        items={[
+          { value: "month", label: "This month" },
+          { value: "history", label: "Fees paid" },
+          { value: "plans", label: "Plans" },
+          { value: "prices", label: "Price list" },
+        ]}
+      />
+
+      {tab === "month" && (
+        <SettingsSection title="Usage" description="1–31 October · resets 1 November">
           <div className="divide-y divide-line">
             {personalAllowances.map((a) => (
               <AllowanceRow key={a.key} a={a} resetsAt={RESET_DATE} />
             ))}
           </div>
         </SettingsSection>
+      )}
 
+      {tab === "history" && (
         <SettingsSection
           title="Fees, last 6 months"
-          description="Every fee is also its own line in Transactions, labelled “Bank fee”."
+          description="Each fee is also a “Bank fee” line in Transactions."
           footer={
             <>
               <span>
-                July: plan <span className="tabular">€1.00</span> + one cash withdrawal abroad (€2.00 + 2.5% of €110.00 = <span className="tabular">€4.75</span>)
+                July: plan <span className="tabular">€1.00</span> + cash abroad <span className="tabular">€4.75</span> (€2.00 + 2.5% of €110)
               </span>
               <span className="tabular font-medium text-ink-2">Total {money(sixMonths)}</span>
             </>
@@ -122,26 +124,26 @@ export function PlanAndFees() {
         >
           <ValueBars data={personalFeesByMonth} highlight="Oct" height={140} className="pt-2" />
         </SettingsSection>
+      )}
 
-        <section id="compare" className="scroll-mt-20">
-          <div className="mb-3">
-            <h2 className="text-[17px] font-semibold tracking-[-0.02em]">Compare plans</h2>
-            <p className="mt-1 text-[13px] text-ink-3">
-              Euro payments and your debit card are included in every plan. Higher plans add insurance — nothing else.
-            </p>
-          </div>
+      {tab === "plans" && (
+        <section>
+          <p className="mb-3 text-[13px] text-ink-3">Every plan includes euro payments and a debit card. Higher plans add insurance.</p>
           <PlanCompare plans={personalPlans} current={current} onChoose={(id) => setChoosing(personalPlans.find((p) => p.id === id) ?? null)} />
+          <p className="mt-3 text-[12px] text-ink-4">Essential is free until 25 and €0.32 from 65.</p>
         </section>
+      )}
 
+      {tab === "prices" && (
         <SettingsSection
           title="Price list"
-          description="In plain words, for the internet bank and app. Plans as in force since 1 Nov 2025, payments and cards as of 31 Aug 2026 — from the swedbank.ee price lists."
+          description="From swedbank.ee price lists: plans since 1 Nov 2025, other fees since 31 Aug 2026."
           action={
             <Input
               size="sm"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search fees, e.g. ATM"
+              placeholder="Search, e.g. ATM"
               prefix={<Search className="size-3.5" />}
               wrapperClassName="w-full sm:w-64"
               aria-label="Search the price list"
@@ -171,13 +173,13 @@ export function PlanAndFees() {
             </div>
           )}
         </SettingsSection>
-      </div>
+      )}
 
       <Modal
         open={!!choosing && !signing}
         onClose={() => setChoosing(null)}
         title={choosing ? `Switch to ${choosing.name}?` : ""}
-        description="Changing your plan amends your service agreement, so you'll confirm it with Smart-ID."
+        description="You confirm the change with your e-signature."
         footer={
           <>
             <Button variant="tertiary" onClick={() => setChoosing(null)}>

@@ -174,7 +174,7 @@ export type CompanyProfile = {
   address: string;
   emtak: string;
   employees: number;
-  kyc: { lastReviewed: string; nextReview: string; risk: string };
+  kyc: { lastReviewed: string; nextReview: string; risk: string; answers?: { label: string; value: string }[] };
   board: string[];
   owners: { name: string; share: number }[];
   representation: "alone" | "joint";

@@ -130,7 +130,7 @@ function DetailsForm({
         value={form.employer}
         onChange={(e) => set({ employer: e.target.value })}
         error={submitted ? errors.employer : undefined}
-        hint="Why we ask: anti-money-laundering rules require us to know where money on the account comes from."
+        hint="Anti-money-laundering law requires us to ask."
       />
 
       {changes.length > 0 ? (
@@ -148,7 +148,7 @@ function DetailsForm({
           </ul>
         </div>
       ) : (
-        <Note tone="gray">Nothing changed yet. Edit a field, or close this window if everything is correct.</Note>
+        <Note tone="gray">Nothing changed yet.</Note>
       )}
 
       <div className={cn("-mx-6 -mb-4 flex justify-end gap-2 border-t border-line bg-canvas px-6 py-3")}>

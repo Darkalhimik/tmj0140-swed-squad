@@ -31,14 +31,14 @@ function clock(offsetSec: number) {
   return new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Europe/Tallinn" }).format(d);
 }
 
-function rowsFor(f: Formation, name: string): Row[] {
+function rowsFor(f: Formation, name: string, method: string): Row[] {
   const you = f.founders.find((p) => p.you)!;
   const others = f.founders.filter((p) => !p.you);
   const yourCapital = (f.capital * you.share) / 100;
   if (f.mode === "existing") {
     const c = registryLookup[f.existingCode];
     return [
-      { id: "signed", label: "Application signed", detail: "Mari Tamm · Smart-ID", ms: 500, log: [`${clock(1)}  Mari Tamm signed with Smart-ID (PIN2)`] },
+      { id: "signed", label: "Application signed", detail: `Mari Tamm · ${method}`, ms: 500, log: [`${clock(1)}  Mari Tamm signed with ${method} (PIN2)`] },
       { id: "registry", label: "Company verified with the e-Business Register", detail: `${c?.code} · ${c?.status}`, ms: 900, log: [`${clock(2)}  Registry data matches application`, `${clock(2)}  Board: Mari Tamm · Shareholders: Mari Tamm 100%`] },
       { id: "screening", label: "Owners screened", detail: "Sanctions and PEP lists · no matches", ms: 1400, log: [`${clock(3)}  1 person screened against EU, UN and OFAC lists`, `${clock(4)}  No matches`] },
       { id: "risk", label: "Risk review", detail: "Approved automatically — nothing else needed from you", ms: 1800, log: [`${clock(5)}  Activity, countries and turnover within standard profile`, `${clock(6)}  Decision: approved`] },
@@ -52,7 +52,7 @@ function rowsFor(f: Formation, name: string): Row[] {
       label: `Application signed by ${f.founders.length} founder${f.founders.length > 1 ? "s" : ""}`,
       detail: f.founders.map((p) => p.name).join(", "),
       ms: 500,
-      log: f.founders.map((p, i) => `${clock(1 + i * 3)}  ${p.name} signed with ${p.residency === "e-Resident" ? "e-Residency card" : "Smart-ID"} (PIN2)`),
+      log: f.founders.map((p, i) => `${clock(1 + i * 3)}  ${p.name} signed with ${p.you ? method : p.residency === "e-Resident" ? "e-Residency card" : "Smart-ID"} (PIN2)`),
     },
     {
       id: "fee",
@@ -138,7 +138,8 @@ export function Tracker() {
 
   const isNew = f.mode === "new";
   const name = isNew ? `${f.name.trim().replace(/\s*OÜ$/i, "") || "Põhjatuul Labs"} OÜ` : (registryLookup[f.existingCode]?.name ?? "Your company");
-  const rows = useMemo(() => (f.submittedAt ? rowsFor(f, name) : []), [f, name]);
+  const method = state.session.method;
+  const rows = useMemo(() => (f.submittedAt ? rowsFor(f, name, method) : []), [f, name, method]);
   const done = rows.length > 0 && progress >= rows.length;
 
   // The moment registration finishes, the company exists in the bank: it appears in the
@@ -338,7 +339,7 @@ export function Tracker() {
           ) : (
             <section className="rounded-xl bg-surface p-5 shadow-card">
               <p className="text-sm font-semibold">While you wait</p>
-              <p className="mt-1 text-[13px] text-ink-3">Set things up now — it all goes live the moment the account opens.</p>
+              <p className="mt-1 text-[13px] text-ink-3">Set up now; it goes live when the account opens.</p>
               <ul className="mt-4 flex flex-col gap-3 text-[13px]">
                 <li className="flex items-start gap-2.5">
                   <Check className="mt-0.5 size-4 text-success" />

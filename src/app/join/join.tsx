@@ -82,8 +82,7 @@ export function Join() {
           <CopyRow label="BIC" value="HABAEE2X" />
         </div>
         <Note tone="gray" className="mt-5">
-          This is where a real new customer would land in their own, empty internet bank. The rest of the demo continues as Mari Tamm, an existing
-          customer with history, so there is something to look at.
+          A new customer would now see their own empty internet bank. The demo continues as Mari Tamm, who has history.
         </Note>
         <div className="mt-6 flex flex-col gap-2 sm:flex-row">
           <ButtonLink href="/start" variant="primary" trailing={<ArrowRight className="size-4" />}>
@@ -135,8 +134,7 @@ export function Join() {
               />
               {method === "Video" ? (
                 <Note tone="info" title="Video identification">
-                  Without an Estonian ID-code you verify with your passport in a short video call. We tell you the date and time before you
-                  book.
+                  No Estonian ID-code? Verify with your passport in a video call.
                 </Note>
               ) : (
                 <Input

@@ -262,7 +262,7 @@ export function CardPayFlow({ autoFocus }: { autoFocus?: boolean }) {
             </p>
           )}
           <Note tone="gray">
-            Card transfers can’t be recalled once the money lands. The name check helps you catch a wrong number before you sign.
+            Card transfers can’t be recalled. Check the name before you sign.
           </Note>
         </div>
         <div className="flex flex-col-reverse gap-2 border-t border-line bg-canvas px-5 py-4 sm:flex-row sm:items-center sm:justify-end">
@@ -399,7 +399,7 @@ export function CardPayFlow({ autoFocus }: { autoFocus?: boolean }) {
         />
 
         <div className="mt-1 flex flex-col-reverse gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[12px] text-ink-3">You’ll see the fee, the rate and what they get before anything is sent.</p>
+          <p className="text-[12px] text-ink-3">Fee, rate and amount received are shown before you sign.</p>
           <Button type="submit" variant="primary" disabled={valid && !nameReady} trailing={<ArrowLeft className="size-4 rotate-180" />}>
             Review transfer
           </Button>

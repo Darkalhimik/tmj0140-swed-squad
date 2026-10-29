@@ -11,13 +11,13 @@ import { fmtDate, NOW } from "@/lib/format";
 import { useCompany, useStore } from "@/lib/store";
 import { SettingsSection } from "./settings-shared";
 
-const HELD = [
-  { label: "What the company does", value: "Software development and UI design for business clients", confirmed: "2026-03-14" },
-  { label: "Expected turnover", value: "€400,000–1,000,000 per year", confirmed: "2026-03-14" },
-  { label: "Countries you trade with", value: "Estonia, Finland, Germany, United Kingdom", confirmed: "2026-03-14" },
-  { label: "Source of funds", value: "Payments from clients for services", confirmed: "2026-03-14" },
-  { label: "Cash usage", value: "None", confirmed: "2026-03-14" },
-  { label: "Beneficial owners", value: "Mari Tamm (60%), Karl Põder (40%)", confirmed: "2026-03-14" },
+/** Answers on file for the seed company; companies opened in the demo carry their own. */
+const SEED_ANSWERS = [
+  { label: "What the company does", value: "Software development and UI design for business clients" },
+  { label: "Expected turnover", value: "€400,000–1,000,000 per year" },
+  { label: "Countries you trade with", value: "Estonia, Finland, Germany, United Kingdom" },
+  { label: "Source of funds", value: "Payments from clients for services" },
+  { label: "Cash usage", value: "None" },
 ];
 
 function monthsUntil(iso: string) {
@@ -33,18 +33,22 @@ export function KycSection() {
   const [reviewed, setReviewed] = useState(company.kyc.lastReviewed);
   const confirmedNow = reviewed !== company.kyc.lastReviewed;
   const next = confirmedNow ? "2027-10-29" : company.kyc.nextReview;
+  const held = [
+    ...(company.kyc.answers ?? SEED_ANSWERS),
+    { label: "Beneficial owners", value: company.owners.map((o) => `${o.name} (${o.share}%)`).join(", ") || "—" },
+  ];
 
   return (
     <SettingsSection
       id="kyc"
       title="Know your customer"
-      description="What we hold about your company and why. Banks must know how accounts are used (anti-money-laundering law) — you can see and confirm all of it here."
+      description="What we hold about your company, as anti-money-laundering law requires."
       aside={<StatusDot status="ready" label="Up to date" />}
       footer={
         <>
           <span className="flex items-start gap-1.5">
             <Info className="mt-px size-3.5 shrink-0" />
-            Confirming takes about 2 minutes. If something changed, edit it before you sign.
+            If something changed, edit it before you sign.
           </span>
           <Button size="sm" variant="primary" onClick={() => setSigning(true)}>
             Confirm details
@@ -69,12 +73,12 @@ export function KycSection() {
         </div>
       </div>
       <ul className="mt-3 divide-y divide-line">
-        {HELD.map((h) => (
+        {held.map((h) => (
           <li key={h.label} className="flex flex-col gap-0.5 py-2.5 sm:flex-row sm:items-center sm:gap-4">
             <span className="w-48 shrink-0 text-[13px] text-ink-3">{h.label}</span>
             <span className="min-w-0 flex-1 text-sm text-ink">{h.value}</span>
             <span className="shrink-0 text-[12px] text-ink-4">
-              {confirmedNow ? "Confirmed today" : `Confirmed ${fmtDate(h.confirmed, "long")}`}
+              {confirmedNow ? "Confirmed today" : `Confirmed ${fmtDate(company.kyc.lastReviewed, "long")}`}
             </span>
           </li>
         ))}
@@ -85,7 +89,7 @@ export function KycSection() {
         onClose={() => setSigning(false)}
         action={`Confirm ${company.name} details are up to date`}
         details={[
-          { label: "Items confirmed", value: `${HELD.length} of ${HELD.length}` },
+          { label: "Items confirmed", value: `${held.length} of ${held.length}` },
           { label: "Next review", value: fmtDate("2027-10-29", "long") },
         ]}
         onConfirmed={() => {
@@ -104,7 +108,7 @@ export function AccountStatusSection() {
     <SettingsSection
       id="status"
       title="Account status"
-      description="If we ever have to restrict anything, this is where you'll see exactly what, why and what to do — never a silent block."
+      description="Any restriction shows here with the reason and what to do."
       aside={
         <Badge tone="success" icon={<CircleCheck className="size-3" />}>
           No restrictions
@@ -126,7 +130,7 @@ export function AccountStatusSection() {
           </div>
           <div>
             <dt className="text-ink-3">What to do</dt>
-            <dd className="text-ink-2">Upload the invoice or contract by 5 Nov. Review takes about 1 working day.</dd>
+            <dd className="text-ink-2">Upload the invoice or contract by 5 Nov.</dd>
           </div>
           <div>
             <dt className="text-ink-3">Case</dt>

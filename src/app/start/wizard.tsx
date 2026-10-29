@@ -20,14 +20,14 @@ export const NEW_STEPS: StepDef[] = [
   { id: "people", title: "Founders & board", description: "Who owns the company and who represents it." },
   { id: "capital", title: "Capital & address", description: "Share capital, registered address and tax options." },
   { id: "account", title: "Business account", description: "How you'll use the account, who gets access and cards." },
-  { id: "review", title: "Review & sign", description: "Check everything, see every cost, and sign with Smart-ID." },
+  { id: "review", title: "Review & sign", description: "Check everything, see every cost, and sign." },
 ];
 
 export const EXISTING_STEPS: StepDef[] = [
   { id: "lookup", title: "Find your company", description: "We fill in everything we can from the e-Business Register." },
   { id: "activity", title: "How you'll use it", description: "A few questions we're required to ask every company." },
   { id: "account", title: "Access & cards", description: "Who gets access, approval rules and cards." },
-  { id: "review", title: "Review & sign", description: "Check everything and sign with Smart-ID." },
+  { id: "review", title: "Review & sign", description: "Check everything and sign." },
 ];
 
 export function stepValid(id: string, f: Formation): boolean {
@@ -70,12 +70,11 @@ export function Wizard() {
     return (
       <div className="mx-auto max-w-[880px] px-4 py-10 lg:px-8 lg:py-14">
         <Badge tone="gray" icon={<ShieldCheck className="size-3" />}>
-          Signed in as Mari Tamm · Smart-ID
+          Signed in as Mari Tamm · {state.session.method}
         </Badge>
         <h1 className="font-display mt-4 text-[32px] leading-10 font-semibold tracking-[-0.015em]">Start a company with Swedbank</h1>
         <p className="mt-2 max-w-xl text-[15px] text-ink-3">
-          We file your application with the e-Business Register and open your business account in the same flow. No branch visit, no
-          paperwork to upload.
+          Register with the e-Business Register and open the account in one flow.
         </p>
         <Choicebox<"new" | "existing">
           className="mt-8"
@@ -240,7 +239,7 @@ export function Wizard() {
           <Note tone="gray" className="mt-6">
             {f.mode === "new"
               ? "Everyone who founds the company signs with Smart-ID, Mobile-ID or ID-card. Changing the application after signing cancels all signatures."
-              : "Sign with Smart-ID to submit. You can change access and cards any time later."}
+              : "Sign to submit. You can change access and cards later."}
           </Note>
         )}
       </section>

@@ -79,7 +79,7 @@ export function RolesMatrix() {
         </div>
         <div className="flex items-start gap-2 border-t border-line bg-canvas px-5 py-3 text-[12px] text-ink-3">
           <Lock className="mt-0.5 size-3.5 shrink-0" />
-          Default roles are locked, so a role means the same thing in every company and in your agreement. Approval limits are set per person on the Members tab.
+          Roles are fixed so they match your agreement. Approval limits are set per person under Members.
         </div>
       </div>
 

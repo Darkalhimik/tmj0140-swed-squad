@@ -65,7 +65,7 @@ export function BusinessPayments() {
     <PageContainer>
       <PageHeader
         title="Payments"
-        description="Approve, schedule and track every payment from Nordlight Studio OÜ."
+        description="Approve, schedule and track every payment."
         actions={
           <Button variant="primary" leading={<Plus className="size-4" />} onClick={openCreate}>
             New payment
@@ -93,7 +93,7 @@ export function BusinessPayments() {
                 <p className="text-sm font-medium text-ink">
                   You can approve {approvable.length} payments · <Money value={approvable.reduce((s, p) => s + p.amount, 0)} />
                 </p>
-                <p className="text-[13px] text-ink-3">One Smart-ID signature covers all of them. You&apos;ll see each one before you sign.</p>
+                <p className="text-[13px] text-ink-3">One signature covers all of them.</p>
               </div>
               <Button variant="primary" leading={<CheckCheck className="size-4" />} onClick={() => setSigning(approvable.map((p) => p.id))}>
                 Approve all ({approvable.length})
@@ -105,7 +105,7 @@ export function BusinessPayments() {
               <EmptyState
                 icon={<CheckCheck className="size-5" />}
                 title="You're all caught up"
-                description="New payments that need your approval appear here, and you'll get a notification."
+                description="Payments waiting for you show up here."
               />
             </Card>
           ) : (
