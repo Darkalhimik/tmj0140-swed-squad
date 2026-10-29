@@ -49,7 +49,8 @@ function classes({ variant = "secondary", size = "md", icon, pill, className }: 
   return cn(
     "inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap font-medium transition-[background-color,color,box-shadow,filter,transform] duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50",
     variants[v],
-    sizes[size],
+    // Icon-only buttons drop the text padding so the icon keeps its size.
+    icon ? sizes[size].replace(/\bpx-[\d.]+\b/, "") : sizes[size],
     orangePill && "h-12 rounded-full px-6 text-[19px] font-bold tracking-[-0.01em]",
     icon && iconOnly[size],
     pill && "rounded-full",

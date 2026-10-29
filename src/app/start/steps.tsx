@@ -228,6 +228,7 @@ const SHARE_COLORS = ["#512b2b", "#ff5f00", "#31a3ae", "#fdc92a", "#990066"];
 
 export function PeopleStep() {
   const { f, set } = useFormation();
+  const signInMethod = useStore().state.session.method;
   const show = f.attempted.includes("people");
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState({ name: "", idCode: "", email: "", residency: "Estonian resident" as Founder["residency"] });
@@ -262,7 +263,7 @@ export function PeopleStep() {
                   <p className="mt-0.5 flex items-center gap-1 text-[12px] text-ink-3">
                     {p.you ? (
                       <>
-                        <CircleCheck className="size-3 text-success" /> Identity confirmed with Smart-ID
+                        <CircleCheck className="size-3 text-success" /> Identity confirmed with {signInMethod}
                       </>
                     ) : (
                       <>

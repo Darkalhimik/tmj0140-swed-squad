@@ -197,7 +197,7 @@ export function SignIn() {
             </h2>
             <ul className="mt-10 flex max-w-[440px] flex-col gap-3">
               {[
-                { icon: <Building2 className="size-4" />, title: "Start a company in one flow", body: "Register your OÜ, verify founders with Smart-ID and get an IBAN the same day." },
+                { icon: <Building2 className="size-4" />, title: "Start a company in one flow", body: "Register your OÜ, sign with all founders online and get an IBAN as soon as it’s registered." },
                 { icon: <Eye className="size-4" />, title: "Every fee, before you pay", body: "Live allowances, fee previews and a clear status for every payment." },
                 { icon: <KeyRound className="size-4" />, title: "Access you can see", body: "Roles, approval rules and a full activity log for your whole team." },
               ].map((f) => (
