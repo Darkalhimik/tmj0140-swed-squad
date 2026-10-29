@@ -60,6 +60,12 @@ export function CommandMenu() {
       ? [
           { label: "New payment", icon: Send, run: go("/personal/payments?new=1"), keywords: ["pay", "transfer", "send"] },
           {
+            label: "Send money to a card",
+            icon: CreditCard,
+            run: go("/personal/payments?new=1&to=card"),
+            keywords: ["card number", "visa", "mastercard", "p2p", "kaart"],
+          },
+          {
             label: "Freeze Visa Debit ••4821",
             icon: Lock,
             keywords: ["block", "lost", "card"],

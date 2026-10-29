@@ -28,6 +28,7 @@ const TYPE: Record<Txn["method"], string> = {
   interest: "Interest",
   atm: "Cash withdrawal",
   internal: "Own accounts",
+  tocard: "Transfer to card",
 };
 
 type Line = Txn & { label: string; refund?: boolean };
@@ -92,7 +93,14 @@ export async function exportStatement(o: {
     const toRow = (t: Txn | Line, balance: number | null): StatementRow => ({
       date: fmtDate(t.at, "long"),
       description: t.counterparty,
-      detail: [t.reference, "label" in t && t.refund ? null : t.location].filter(Boolean).join(" · "),
+      detail: [
+        t.toCard ? `To ${t.toCard.network} ••${t.toCard.last4} · ${t.toCard.bank}` : null,
+        t.fx ? `Recipient got ${t.fx.received.toFixed(2)} ${t.fx.currency} at ${t.fx.rate}` : null,
+        t.reference,
+        "label" in t && t.refund ? null : t.location,
+      ]
+        .filter(Boolean)
+        .join(" · "),
       type: "label" in t ? t.label : TYPE[t.method],
       amount: t.amount,
       balance,

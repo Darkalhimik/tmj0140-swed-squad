@@ -62,6 +62,15 @@ export const personalPlanId = "essential";
 export const personalAllowances: Allowance[] = [
   { key: "sepa", label: "Euro payments — SEPA, instant, Swedbank", used: 14, included: null, unit: "payment", overage: 0, overageText: "Included in your plan · €0.38 each without a plan" },
   { key: "einvoice", label: "E-invoices & standing orders", used: 5, included: null, unit: "payment", overage: 0 },
+  {
+    key: "tocard",
+    label: "Transfers to cards (Visa Direct, Mastercard Move)",
+    used: 3,
+    included: null,
+    unit: "transfer",
+    overage: 0,
+    overageText: "Free to Swedbank cards · €0.50 to other EU cards · 1% (min €1) outside the EU",
+  },
   { key: "atm", label: "Cash at Swedbank Group ATMs", used: 60, included: 2000, unit: "€", overage: 0.005, money: true, overageText: "€2,000 free per month · then 0.5%" },
   { key: "atm-other", label: "Cash at other banks' ATMs", used: 0, included: 0, unit: "withdrawal", overage: 2, overageText: "€2.00 + 2.5% per withdrawal" },
   { key: "deposit", label: "Cash deposits at Swedbank ATMs", used: 0, included: 5000, unit: "€", overage: 0, money: true, overageText: "€5,000 free per month" },
@@ -109,6 +118,9 @@ export const priceList = [
     group: "Payments",
     items: [
       { label: "Euro payment — SEPA, instant or to Swedbank", price: "Included", note: "In every plan · €0.38 (€0.16 within Swedbank) without a plan" },
+      { label: "Transfer to a Swedbank card (by card number)", price: "Free", note: "Arrives instantly" },
+      { label: "Transfer to another bank's card in the EU", price: "€0.50", note: "Visa Direct / Mastercard Move · usually within 30 minutes" },
+      { label: "Transfer to a card outside the EU", price: "1%", note: "Min €1.00 · exchange rate shown before you send" },
       { label: "Urgent euro payment (up to €10,000)", price: "€7.00" },
       { label: "International payment, shared costs (SHA)", price: "€6.00", note: "Intermediary bank fees shown before you send" },
       { label: "International payment, you pay all costs (OUR)", price: "€25.00" },

@@ -15,30 +15,37 @@ import { payees as seedPayees, upcoming, type Upcoming } from "@/lib/data/person
 import { cleanIban } from "@/components/personal/iban";
 import { fmtDate, money } from "@/lib/format";
 import { useStore } from "@/lib/store";
+import { CardPayFlow } from "@/components/personal/card-pay";
+import { Segmented } from "@/components/ui/tabs";
 import { PayFlow, type Draft, type Payee } from "./pay-flow";
 
 type Item = Upcoming & { mine?: boolean };
 
-/** Reads `?new=1` (from ⌘K or the overview "Pay" action) and resets the form. */
-function NewPaymentParam({ onNew }: { onNew: () => void }) {
+/** Reads `?new=1` (from ⌘K or the overview "Pay" action) and resets the form; `&to=card` opens "Send to a card". */
+function NewPaymentParam({ onNew }: { onNew: (method: Method) => void }) {
   const params = useSearchParams();
   const router = useRouter();
   const isNew = params.get("new") === "1";
+  const method: Method = params.get("to") === "card" ? "card" : "iban";
   useEffect(() => {
     if (!isNew) return;
-    onNew();
+    onNew(method);
     router.replace("/personal/payments", { scroll: false });
-  }, [isNew, onNew, router]);
+  }, [isNew, method, onNew, router]);
   return null;
 }
+
+type Method = "iban" | "card";
 
 export function Payments() {
   const [formKey, setFormKey] = useState(0);
   const [focus, setFocus] = useState(false);
   const [payees, setPayees] = useState<Payee[]>(seedPayees);
   const [scheduled, setScheduled] = useState<Item[]>([]);
+  const [method, setMethod] = useState<Method>("iban");
 
-  const onNew = useCallback(() => {
+  const onNew = useCallback((m: Method) => {
+    setMethod(m);
     setFormKey((k) => k + 1);
     setFocus(true);
   }, []);
@@ -59,9 +66,35 @@ export function Payments() {
       <Suspense fallback={null}>
         <NewPaymentParam onNew={onNew} />
       </Suspense>
-      <PageHeader title="Payments" description="Send money in seconds. You see every fee and the arrival time before you confirm." />
+      <PageHeader
+        title="Payments"
+        description="Send money in seconds — to an IBAN or straight to someone's card. You see every fee and the arrival time before you confirm."
+      />
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <PayFlow key={formKey} autoFocus={focus} payees={payees} onSavePayee={onSavePayee} onSchedule={onSchedule} />
+        <div className="flex min-w-0 flex-col gap-3">
+          <Segmented<Method>
+            className="self-start"
+            value={method}
+            onChange={setMethod}
+            items={[
+              { value: "iban", label: "To an IBAN" },
+              {
+                value: "card",
+                label: (
+                  <span className="flex items-center gap-1.5">
+                    To a card
+                    <span className="rounded-full bg-brand px-1.5 text-[10px] leading-4 font-semibold text-white">New</span>
+                  </span>
+                ),
+              },
+            ]}
+          />
+          {method === "iban" ? (
+            <PayFlow key={formKey} autoFocus={focus} payees={payees} onSavePayee={onSavePayee} onSchedule={onSchedule} />
+          ) : (
+            <CardPayFlow key={formKey} autoFocus={focus} />
+          )}
+        </div>
         <ComingUp scheduled={scheduled} onCancel={(id) => setScheduled((l) => l.filter((x) => x.id !== id))} />
       </div>
     </PageContainer>

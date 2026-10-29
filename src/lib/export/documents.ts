@@ -31,6 +31,7 @@ const SCHEME: Partial<Record<Txn["method"], string>> = {
   atm: "Cash withdrawal",
   fee: "Bank fee",
   internal: "Between own accounts",
+  tocard: "Transfer to card (Visa Direct / Mastercard Move)",
 };
 
 /** Confirmation for any transaction opened in the transaction drawer. */
@@ -166,6 +167,46 @@ export async function downloadFeeStatement(inv: { id: string; period: string; am
       inv.status === "upcoming"
         ? "This is an estimate based on usage so far. Usage updates every few minutes; the final statement is issued on 1 November."
         : "No monthly account fee. Roles, approval rules and the activity log are free on every business account.",
+  });
+  return filename;
+}
+
+/** Confirmation for a push-to-card transfer (Visa Direct / Mastercard Move). */
+export async function downloadCardTransferConfirmation(o: {
+  holder: string | null;
+  last4: string;
+  network: string;
+  issuer: { bank: string; country: string; currency: string; swedbank?: boolean };
+  value: number;
+  fee: number;
+  received: number;
+  message: string;
+}) {
+  const filename = `card-transfer-${o.last4}-${NOW.toISOString().slice(0, 10)}.pdf`;
+  const via = o.network === "Mastercard" ? "Mastercard Move" : "Visa Direct";
+  await paymentConfirmationPdf({
+    filename,
+    id: `CTR-${Math.round(o.value * 100)}-${o.last4}`,
+    status: o.issuer.swedbank ? "Credited" : "Sent · crediting the card",
+    payer: { name: person.name, iban: personalAccounts[0]!.iban },
+    beneficiary: {
+      name: o.holder ?? "Card owner (name not returned)",
+      iban: `Card ${o.network} •••• ${o.last4}`,
+      bank: `${o.issuer.bank}, ${o.issuer.country}`,
+    },
+    amount: o.value,
+    fee: o.fee,
+    scheme: `Transfer to card · ${via}`,
+    reference: [
+      o.message,
+      o.issuer.currency !== "EUR" ? `Recipient gets ${o.received.toFixed(2)} ${o.issuer.currency}` : null,
+    ]
+      .filter(Boolean)
+      .join(" · "),
+    createdAt: NOW.toISOString(),
+    executedAt: NOW.toISOString(),
+    arrival: o.issuer.swedbank ? "Instantly" : "Usually within 30 minutes",
+    signedBy: person.name,
   });
   return filename;
 }

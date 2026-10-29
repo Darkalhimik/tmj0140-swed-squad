@@ -21,7 +21,7 @@ export type Category =
 
 export type TxnStatus = "pending" | "booked" | "declined" | "refunded";
 
-export type Method = "card" | "sepa" | "instant" | "einvoice" | "standing" | "fee" | "interest" | "atm" | "internal";
+export type Method = "card" | "sepa" | "instant" | "einvoice" | "standing" | "fee" | "interest" | "atm" | "internal" | "tocard";
 
 export type Txn = {
   id: string;
@@ -42,6 +42,10 @@ export type Txn = {
   /** Business only: who triggered it. */
   memberId?: string;
   receipt?: boolean;
+  /** Push-to-card transfer (Visa Direct / Mastercard Move). */
+  toCard?: { last4: string; network: string; bank: string; country: string };
+  /** Set when the recipient's card is in another currency. */
+  fx?: { currency: string; rate: number; mid: number; received: number };
 };
 
 export type AccountKind = "current" | "savings" | "funds" | "pension" | "tax";

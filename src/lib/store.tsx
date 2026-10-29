@@ -143,6 +143,16 @@ type Action =
   | { type: "personal/cardLimit"; id: string; index: number; max: number }
   | { type: "personal/addCard"; name: string; limit: number }
   | { type: "personal/pay"; to: string; iban: string; amount: number; reference: string; instant: boolean }
+  | {
+      type: "personal/payCard";
+      to: string;
+      amount: number;
+      fee: number;
+      message: string;
+      card: NonNullable<Txn["toCard"]>;
+      fx?: Txn["fx"];
+      instant: boolean;
+    }
   | { type: "move"; scope: "personal" | "business"; from: string; to: string; amount: number }
   | { type: "biz/approve"; id: string }
   | { type: "biz/reject"; id: string; reason: string }
@@ -251,6 +261,50 @@ function reducer(state: State, action: Action): State {
           txns: [txn, ...state.personal.txns],
           accounts: state.personal.accounts.map((a) =>
             a.id === "p-main" ? { ...a, balance: Math.round((a.balance - action.amount) * 100) / 100 } : a,
+          ),
+        },
+      };
+    }
+    case "personal/payCard": {
+      const transfer: Txn = {
+        id: `pt-${state.seq}`,
+        accountId: "p-main",
+        at: NOW_ISO,
+        counterparty: action.to,
+        amount: -action.amount,
+        category: "transfers",
+        method: "tocard",
+        status: action.instant ? "booked" : "pending",
+        reference: action.message || undefined,
+        fee: action.fee,
+        toCard: action.card,
+        fx: action.fx,
+      };
+      const feeTxn: Txn[] =
+        action.fee > 0
+          ? [
+              {
+                id: `pt-${state.seq}-fee`,
+                accountId: "p-main",
+                at: NOW_ISO,
+                counterparty: "Swedbank",
+                amount: -action.fee,
+                category: "fees",
+                method: "fee",
+                status: "booked",
+                reference: `Card transfer fee · ${action.card.network} ••${action.card.last4}`,
+              },
+            ]
+          : [];
+      const total = action.amount + action.fee;
+      return {
+        ...state,
+        seq: state.seq + 1,
+        personal: {
+          ...state.personal,
+          txns: [...feeTxn, transfer, ...state.personal.txns],
+          accounts: state.personal.accounts.map((a) =>
+            a.id === "p-main" ? { ...a, balance: Math.round((a.balance - total) * 100) / 100 } : a,
           ),
         },
       };

@@ -34,7 +34,7 @@ const PEOPLE = /^(Kristjan|Landlord|Liisa|Eva) /;
 
 export function TxnIcon({ txn, size = "md" }: { txn: Txn; size?: "sm" | "md" | "lg" }) {
   const dims = size === "lg" ? "size-14 rounded-2xl text-[18px]" : size === "md" ? "size-10 rounded-full text-[13px]" : "size-8 rounded-full text-[11px]";
-  if (PEOPLE.test(txn.counterparty)) {
+  if (PEOPLE.test(txn.counterparty) || (txn.method === "tocard" && !/card ••/.test(txn.counterparty))) {
     return <Avatar name={txn.counterparty.replace("Landlord — ", "")} size={size === "lg" ? "xl" : size === "md" ? "lg" : "md"} />;
   }
   if (txn.method === "internal") {
@@ -82,6 +82,8 @@ export function methodLabel(txn: Txn) {
       return "Cash withdrawal";
     case "internal":
       return "Between your accounts";
+    case "tocard":
+      return "Transfer to card";
   }
 }
 
@@ -170,6 +172,16 @@ function timeline(txn: Txn): Step[] {
     ];
     if (txn.status === "refunded") steps.push({ label: "Refunded", at: plus(60 * 48), state: "done", note: txn.note });
     return steps;
+  }
+  if (txn.method === "tocard") {
+    const via = txn.toCard?.network === "Mastercard" ? "Mastercard Move" : "Visa Direct";
+    return [
+      { label: "Sent from Everyday account", at: txn.at, state: "done" },
+      { label: `Pushed to the card via ${via}`, at: txn.at, state: "done" },
+      txn.status === "pending"
+        ? { label: `Credited to ${txn.toCard?.bank ?? "the"} card ••${txn.toCard?.last4}`, state: "current", note: "Usually within 30 minutes. We'll notify you when it lands." }
+        : { label: `Credited to ${txn.toCard?.bank ?? "the"} card ••${txn.toCard?.last4}`, at: txn.at, state: "done", note: "Arrived instantly" },
+    ];
   }
   if (txn.method === "instant")
     return [
@@ -285,6 +297,11 @@ export function TxnDrawer({
               )}
               {member && <KeyValue label="Spent by">{member}</KeyValue>}
               {txn.iban && <KeyValue label={txn.amount > 0 ? "From IBAN" : "To IBAN"} mono>{fmtIban(txn.iban)}</KeyValue>}
+              {txn.toCard && (
+                <KeyValue label="To card">
+                  {txn.toCard.network} ••{txn.toCard.last4} · {txn.toCard.bank}, {txn.toCard.country}
+                </KeyValue>
+              )}
               {txn.reference && <KeyValue label="Reference">{txn.reference}</KeyValue>}
               <KeyValue label="Amount">
                 <Money value={Math.abs(txn.amount)} />
@@ -292,12 +309,31 @@ export function TxnDrawer({
               <KeyValue label="Fee">
                 <span className="inline-flex items-center gap-1.5">
                   <Money value={txn.fee ?? 0} />
-                  <Badge size="xs" tone="success">
-                    {txn.method === "atm" ? "Free up to €2,000/month" : "No fee"}
-                  </Badge>
+                  {(txn.fee ?? 0) > 0 ? (
+                    <Badge size="xs" tone="gray">
+                      Booked as a separate line
+                    </Badge>
+                  ) : (
+                    <Badge size="xs" tone="success">
+                      {txn.method === "atm" ? "Free up to €2,000/month" : txn.method === "tocard" ? "Free to Swedbank cards" : "No fee"}
+                    </Badge>
+                  )}
                 </span>
               </KeyValue>
-              <KeyValue label="Exchange rate">None — paid in EUR</KeyValue>
+              <KeyValue label="Exchange rate">
+                {txn.fx ? (
+                  <span className="flex flex-col items-end">
+                    <span>
+                      1 EUR = {txn.fx.rate} {txn.fx.currency}
+                    </span>
+                    <span className="text-[12px] text-ink-3">
+                      Mid-market {txn.fx.mid} · recipient got {txn.fx.received.toLocaleString("en-IE", { minimumFractionDigits: 2 })} {txn.fx.currency}
+                    </span>
+                  </span>
+                ) : (
+                  "None — paid in EUR"
+                )}
+              </KeyValue>
               <KeyValue label="Transaction ID" mono>
                 {txn.id.toUpperCase()}-{txn.at.slice(0, 10).replaceAll("-", "")}
               </KeyValue>

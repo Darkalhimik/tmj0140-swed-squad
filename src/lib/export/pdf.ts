@@ -385,7 +385,9 @@ export async function paymentConfirmationPdf(o: {
   w.heading("Beneficiary");
   w.keyValues([
     ["Name", o.beneficiary.name],
-    ["IBAN", o.beneficiary.iban.startsWith("Bulk") ? o.beneficiary.iban : fmtIban(o.beneficiary.iban)],
+    o.beneficiary.iban.startsWith("Card ")
+      ? ["Card", o.beneficiary.iban.slice(5)]
+      : ["IBAN", o.beneficiary.iban.startsWith("Bulk") ? o.beneficiary.iban : fmtIban(o.beneficiary.iban)],
     ["Bank", o.beneficiary.bank ?? "Detected from IBAN"],
     ["Payment scheme", o.scheme],
   ]);
